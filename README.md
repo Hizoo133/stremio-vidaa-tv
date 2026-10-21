@@ -49,7 +49,7 @@ Every row is something the patch layer does on top of the pristine upstream app 
 | **Subtitle names** | The subtitle picker shows full descriptive filenames (source, release group) instead of upstream's truncated labels |
 | **External services** | "On Netflix" streams: the official app shows a dead-end "no deep linking" dialog. Ours asks for confirmation and opens the service's website in the TV browser — and tells you honestly if the browser blocked it |
 | **Interface languages** | Fixes Theater 1.10.0's non-reactive `interfaceLanguage` binding so switching among all 50 interface languages in Settings loads the translation chunk immediately |
-| **System font fallback** | Auto-detects VIDAA firmware (`P0218`, etc.) where the custom `PlusJakartaSans` font collapses word spacing or doubles bold titles, plus a manual **Use System Font** toggle in **Settings > Vidaa TV** |
+| **System font fallback** | Strictly opt-in **System Font (Fix Text Spacing)** toggle in **Settings > Vidaa TV** (off by default so standard projector/TV typography is untouched) |
 | **Direct HLS (`.m3u8`) streams** | Bypasses the local streaming-server `canPlayStream` probe for direct `.m3u8` HLS streams so live/HLS addon streams play directly without a streaming server |
 | **Launcher install** | One-click installer (DNS method, spoofing `vidaahub.com` + `*.vidaahub.com`) writes the app registry (`websdk/Appinfo.json`) directly — working around firmware that reports install success and then silently drops the icon. Plus the in-app banner and [Sidee](https://github.com/Empi9245/Sidee) support |
 | **Exit & crash hygiene** | A real Exit that calls `Hisense_Exit` (official relies on `window.close`, a no-op for the webview), suppression of the F-key fullscreen crash, a freeze watchdog that recovers hung UI, and memory-pressure monitoring |
@@ -324,7 +324,7 @@ The reference document [`docs/UPSTREAM_ANALYSIS.md`](docs/UPSTREAM_ANALYSIS.md) 
 | **Search keyboard doesn't work** | Check the version number in the bottom-right corner matches the latest, then clear the browser cache (Settings > Clear Data or the TV browser's own settings) and reload. |
 | **App shows old version** | The service worker updates in the background and refreshes when you're not watching — to force it immediately, clear data or add `?v=new` to the URL. |
 | **720p UI is clipped** | The app auto-detects 720p viewports and applies zoom correction. If it's not working, cycle the mode in Settings > Vidaa TV > 720p Mode. |
-| **Words run together / no spaces between words / doubled bold text** | Some VIDAA firmware builds (`P0218`, etc.) misrender the custom `PlusJakartaSans` font metrics. Go to **Settings > Vidaa TV > Use System Font** and turn it **ON** (auto-enabled on `P0218`). |
+| **Words run together / no spaces between words / doubled bold text** | Some VIDAA firmware builds (`P0218`, etc.) misrender the custom `PlusJakartaSans` font metrics. Go to **Settings > Vidaa TV > System Font (Fix Text Spacing)** and turn it **ON** (or append `?sysfont=1` to the URL). |
 | **TV Browser forces mouse cursor instead of D-pad navigation** | The built-in VIDAA Internet Browser defaults to a virtual pointer cursor. To get native D-pad arrow navigation without a cursor, install Stremio as a launcher tile via **Method 2 (Sidee)** or **Method 3 (One-Click Installer)** so it runs in VIDAA's native App WebView instead of the Browser app. |
 
 ## Development & Syncing

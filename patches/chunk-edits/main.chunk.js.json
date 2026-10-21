@@ -21,11 +21,6 @@
       "note": "App root (Issue #34): destructure ctx.settings with {lazy:!0} so interfaceLanguage is a reactive getter even when ctx.settings starts as {} before the initial debounced core state update fires.",
       "find": "{interfaceLanguage:m}=(0,h.J)(n.settings)",
       "replace": "{interfaceLanguage:m}=(0,h.J)(n.settings,{lazy:!0})"
-    },
-    {
-      "note": "FocusNode (Issue #36): support VIDAA Browser pointer/cursor mode by falling back to onPress on click and focusing on mouseenter when the pointer is actively moving (window.__vidaaPointerActive), which also drives vertical/horizontal ScrollContainer scrolling.",
-      "find": "const q=e=>{const{ref:t,focus:n}=N({layoutUpdate:e.layoutUpdate}),i=()=>{n(),e.onClick&&e.onClick()};return(0,o.k9)((()=>e.autoFocus),(e=>{e&&n()})),(0,r.Rc)((()=>{e.autoFocus&&n()})),a=F(),(0,z.q2)(a,\"blur\",e.onBlur),(0,z.q2)(a,\"focus\",e.onFocus),(0,z.q2)(a,\"press\",e.onPress),a.$$click=i,",
-      "replace": "const q=e=>{const{ref:t,focus:n}=N({layoutUpdate:e.layoutUpdate}),i=()=>{n();var fn=e.onClick||e.onPress;fn&&fn()};return(0,o.k9)((()=>e.autoFocus),(e=>{e&&n()})),(0,r.Rc)((()=>{e.autoFocus&&n()})),a=F(),(0,z.q2)(a,\"blur\",e.onBlur),(0,z.q2)(a,\"focus\",e.onFocus),(0,z.q2)(a,\"press\",e.onPress),a.addEventListener(\"mouseenter\",(()=>{window.__vidaaPointerActive&&n()})),a.$$click=i,"
     }
   ],
   "fixTrailingNewline": "ensure"

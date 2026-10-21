@@ -290,17 +290,13 @@ module.exports = {
     var F = (0, z.vs)("<div>");
     const q = (e2) => {
       const { ref: t2, focus: n2 } = N({ layoutUpdate: e2.layoutUpdate }), i2 = () => {
-        n2();
-        var fn = e2.onClick || e2.onPress;
-        fn && fn();
+        n2(), e2.onClick && e2.onClick();
       };
       return (0, o.k9)((() => e2.autoFocus), ((e3) => {
         e3 && n2();
       })), (0, r.Rc)((() => {
         e2.autoFocus && n2();
-      })), a2 = F(), (0, z.q2)(a2, "blur", e2.onBlur), (0, z.q2)(a2, "focus", e2.onFocus), (0, z.q2)(a2, "press", e2.onPress), a2.addEventListener("mouseenter", (() => {
-        window.__vidaaPointerActive && n2();
-      })), a2.$$click = i2, (0, z.Yx)(t2, a2), (0, z.Yr)(a2, (() => e2.children)), (0, r.gb)(((t3) => {
+      })), a2 = F(), (0, z.q2)(a2, "blur", e2.onBlur), (0, z.q2)(a2, "focus", e2.onFocus), (0, z.q2)(a2, "press", e2.onPress), a2.$$click = i2, (0, z.Yx)(t2, a2), (0, z.Yr)(a2, (() => e2.children)), (0, r.gb)(((t3) => {
         var n3 = e2.class, r2 = e2.classList, o2 = e2.style;
         return n3 !== t3.e && (0, z.s7)(a2, t3.e = n3), t3.t = (0, z.pP)(a2, r2, t3.t), t3.a = (0, z.iF)(a2, o2, t3.a), t3;
       }), { e: void 0, t: void 0, a: void 0 }), a2;
