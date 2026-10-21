@@ -298,14 +298,18 @@ def dns_server(local_ip):
             domain, qtype = parse_dns_question(data)
             response = None
 
-            if domain == SPOOF_DOMAIN and qtype == 1:
+            is_spoofed = domain == SPOOF_DOMAIN or (
+                domain is not None and domain.endswith("." + SPOOF_DOMAIN)
+            )
+
+            if is_spoofed and qtype == 1:
                 response = build_dns_response(data, local_ip)
                 if response:
                     sock.sendto(response, addr)
                     print("[DNS]   " + addr[0] + " queried " + domain + " -> " + local_ip + " (spoofed)")
                 continue
 
-            if domain == SPOOF_DOMAIN and qtype == 28:
+            if is_spoofed and qtype == 28:
                 response = build_empty_dns_response(data)
                 if response:
                     sock.sendto(response, addr)
@@ -325,13 +329,30 @@ def dns_server(local_ip):
 # ---------------------------------------------------------------------------
 
 class InstallerHandler(http.server.SimpleHTTPRequestHandler):
-    """Serve the installer UI plus a small set of shared assets from the repo root."""
+    """Serve the installer UI plus the brand assets it references from app/."""
 
+    # The installer page references these at the site root; the files live in
+    # app/ (also the gh-pages root, so the same URLs work when the installer
+    # page is served from the deployed site instead of this server).
     SHARED_FILES = {
-        "icon.png": os.path.join(REPO_ROOT, "icon.png"),
-        "logo.png": os.path.join(REPO_ROOT, "logo.png"),
-        "PlusJakartaSans.ttf": os.path.join(REPO_ROOT, "PlusJakartaSans.ttf"),
+        "/icon.png": "icon.png",
+        "/shared/icon.png": "icon.png",
+        "/logo.png": "logo.png",
+        "/shared/logo.png": "logo.png",
+        "/PlusJakartaSans.ttf": "PlusJakartaSans.ttf",
+        "/shared/PlusJakartaSans.ttf": "PlusJakartaSans.ttf",
     }
+
+    @classmethod
+    def resolve_shared_file(cls, asset_name):
+        for candidate in (
+            os.path.join(REPO_ROOT, "app", asset_name),
+            os.path.join(REPO_ROOT, asset_name),
+            os.path.join(REPO_ROOT, "upstream", "theater-1.10.0", asset_name),
+        ):
+            if os.path.exists(candidate):
+                return candidate
+        return None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=INSTALLER_DIR, **kwargs)
@@ -346,9 +367,8 @@ class InstallerHandler(http.server.SimpleHTTPRequestHandler):
         if path in ("/", "/index.html"):
             return super().do_GET()
 
-        if path.startswith("/shared/"):
-            filename = path.split("/", 2)[-1]
-            file_path = self.SHARED_FILES.get(filename)
+        if path in self.SHARED_FILES:
+            file_path = self.resolve_shared_file(self.SHARED_FILES[path])
             if not file_path or not os.path.exists(file_path):
                 self.send_error(404, "File not found")
                 return

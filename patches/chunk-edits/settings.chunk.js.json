@@ -1,0 +1,22 @@
+{
+  "chunk": "settings.chunk.js",
+  "description": "Surgical edits turning the pristine Theater 1.10.0 settings.chunk.js into the VIDAA build. Re-anchored from the 1.9.2 baseline (8775223) onto the 1.10.0 minified output.",
+  "ops": [
+    {
+      "note": "Vidaa TV section: thin seam calling window.__vidaaSettingsRows(g, p) (settings/settings-ui.js) — g is the app's animations model (same identifier as 1.9.2), p the platform info. The UI itself lives in patch JS.",
+      "find": "label:\"QUIT\",onClick:()=>window.dispatchEvent(new Event(\"quit\"))}]}]};var m=o(2434),",
+      "replace": "label:\"QUIT\",onClick:()=>window.dispatchEvent(new Event(\"quit\"))}]},{label:\"Vidaa TV\",icon:\"about\",options:typeof window.__vidaaSettingsRows===\"function\"?window.__vidaaSettingsRows(g,p):[]}]};var m=o(2434),"
+    },
+    {
+      "note": "EDIT_URL dialog: plain local field + Auto-Detect button (settings/server-url-manager.js) + commit once on Confirm with reachability ping (VIDAA 0.0.0.x mask fix).",
+      "find": "return[(0,n.a0)(a.ks,{get value(){return t.settings().streamingServerUrl},autoFocus:!0,onChange:w}),(0,n.a0)(a.$n,{get label(){return e(\"BUTTON_CONFIRM\")},onPress:b})]",
+      "replace": "var _urlVal=t.settings().streamingServerUrl;return[(0,n.a0)(a.ks,{value:_urlVal,autoFocus:!0,onChange:nv=>{_urlVal=nv}}),(0,n.a0)(a.$n,{label:\"Auto-Detect\",onPress:()=>{if(window.__serverDialogAutoDetect)window.__serverDialogAutoDetect()}}),(0,n.a0)(a.$n,{get label(){return e(\"BUTTON_CONFIRM\")},onPress:()=>{var _finalUrl=(_urlVal||\"\").trim();while(_finalUrl.charAt(_finalUrl.length-1)===\"/\")_finalUrl=_finalUrl.slice(0,-1);if(_finalUrl&&_finalUrl.indexOf(\"://\")===-1)_finalUrl=\"http://\"+_finalUrl;_urlVal=_finalUrl;if(_finalUrl){w(_finalUrl);if(window.__serverDialogTest)window.__serverDialogTest(_finalUrl)}b()}})]"
+    },
+    {
+      "note": "SERVER row: accept the page-level health probe (kernel/server-url.js __SERVER_HEALTH__) as online evidence, fixing false Offline when the core one-shot check failed.",
+      "find": "label:()=>f.online()?c(\"MOBILE_SERVER_ONLINE\"):c(\"MOBILE_SERVER_OFFLINE\"),",
+      "replace": "label:()=>f.online()||(window.__SERVER_HEALTH__&&\"online\"===window.__SERVER_HEALTH__.status)?c(\"MOBILE_SERVER_ONLINE\"):c(\"MOBILE_SERVER_OFFLINE\"),"
+    }
+  ],
+  "fixTrailingNewline": "ensure"
+}

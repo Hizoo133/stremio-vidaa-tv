@@ -1,28 +1,92 @@
-var CACHE_NAME = 'stremio-vidaa-v10';
+var CACHE_NAME = 'stremio-vidaa-v9-71cc426';
 var ASSETS = [
-  './',
-  './index.html',
-  './runtime.js',
-  './main.js',
-  './service.js',
-  './webOSTV.js',
-  './v5-worker.js',
-  './stremio_core_web_bg.wasm',
-  './core.chunk.js',
-  './home.chunk.js',
-  './discover.chunk.js',
-  './search.chunk.js',
-  './player.chunk.js',
-  './video.chunk.js',
-  './details.chunk.js',
-  './library.chunk.js',
-  './login.chunk.js',
-  './settings.chunk.js',
-  './addons.chunk.js',
-  './logo.png',
-  './icon.png',
-  './PlusJakartaSans.ttf'
+  "./",
+  "./PlusJakartaSans.ttf",
+  "./addons.chunk.js",
+  "./checker.svg",
+  "./core.chunk.js",
+  "./details.chunk.js",
+  "./discover.chunk.js",
+  "./empty.png",
+  "./home.chunk.js",
+  "./icon.png",
+  "./index.html",
+  "./library.chunk.js",
+  "./login.chunk.js",
+  "./logo.png",
+  "./main.js",
+  "./player.chunk.js",
+  "./runtime.js",
+  "./search.chunk.js",
+  "./service.js",
+  "./settings.chunk.js",
+  "./stremio_core_web_bg.wasm",
+  "./translations0.chunk.js",
+  "./translations1.chunk.js",
+  "./translations10.chunk.js",
+  "./translations11.chunk.js",
+  "./translations12.chunk.js",
+  "./translations13.chunk.js",
+  "./translations14.chunk.js",
+  "./translations15.chunk.js",
+  "./translations16.chunk.js",
+  "./translations17.chunk.js",
+  "./translations18.chunk.js",
+  "./translations19.chunk.js",
+  "./translations2.chunk.js",
+  "./translations20.chunk.js",
+  "./translations21.chunk.js",
+  "./translations22.chunk.js",
+  "./translations23.chunk.js",
+  "./translations24.chunk.js",
+  "./translations25.chunk.js",
+  "./translations26.chunk.js",
+  "./translations27.chunk.js",
+  "./translations28.chunk.js",
+  "./translations29.chunk.js",
+  "./translations3.chunk.js",
+  "./translations30.chunk.js",
+  "./translations31.chunk.js",
+  "./translations32.chunk.js",
+  "./translations33.chunk.js",
+  "./translations34.chunk.js",
+  "./translations35.chunk.js",
+  "./translations36.chunk.js",
+  "./translations37.chunk.js",
+  "./translations38.chunk.js",
+  "./translations39.chunk.js",
+  "./translations4.chunk.js",
+  "./translations40.chunk.js",
+  "./translations41.chunk.js",
+  "./translations42.chunk.js",
+  "./translations43.chunk.js",
+  "./translations44.chunk.js",
+  "./translations45.chunk.js",
+  "./translations46.chunk.js",
+  "./translations47.chunk.js",
+  "./translations48.chunk.js",
+  "./translations49.chunk.js",
+  "./translations5.chunk.js",
+  "./translations6.chunk.js",
+  "./translations7.chunk.js",
+  "./translations8.chunk.js",
+  "./translations9.chunk.js",
+  "./v5-worker.js",
+  "./video.chunk.js",
+  "./webOSTV.js",
+  "./webtorrent-sw.min.js",
+  "./webtorrent.min.js"
 ];
+
+// WebTorrent's streaming-server service worker (pinned + vendored, see
+// upstream/vendor/webtorrent/3.0.21/README.md). A fetch event only ever
+// reaches the SW controlling the page, so its fetch listener must live HERE —
+// registering dist/sw.min.js separately (its docs' scope './' suggestion)
+// would displace this app shell worker. It only respondWith()s URLs under
+// <scope>webtorrent/; everything else passes through to our handler below.
+// Optional: if the script is missing the app shell works, torrent streaming
+// just stays unavailable.
+try { importScripts('./webtorrent-sw.min.js'); } catch (e) { /* torrent streaming unavailable */ }
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
@@ -51,6 +115,11 @@ self.addEventListener('fetch', function(e) {
   var req = e.request;
   if (req.method !== 'GET') return;
   if (req.url.indexOf(self.location.origin) !== 0) return;
+
+  // WebTorrent streaming URLs (<origin>/webtorrent/...) belong to the
+  // importScripts'd webtorrent worker above. Plain return — never
+  // respondWith and never cache a media stream into the app shell cache.
+  if (new URL(req.url).pathname.indexOf('/webtorrent') === 0) return;
 
   // Never touch media range requests. If we ever served video from the
   // same origin and this handler intercepted, Range semantics break and

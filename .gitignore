@@ -1,0 +1,7 @@
+node_modules/
+app/
+.zcode/
+test-results/
+playwright-report/
+__pycache__/
+tmp-rebaseline/

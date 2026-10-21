@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <link rel="icon" type="image/png" href="icon.png" />
+    <!-- DNS prefetch / preconnect hints for common Stremio and debrid endpoints.
+         Resolves TLS handshake + DNS lookup ahead of stream start so the
+         browser's <video> element can start filling its buffer immediately
+         instead of burning 200-500ms on each new connection on stream change. -->
+    <link rel="dns-prefetch" href="//real-debrid.com" />
+    <link rel="dns-prefetch" href="//download.real-debrid.com" />
+    <link rel="dns-prefetch" href="//alldebrid.com" />
+    <link rel="dns-prefetch" href="//premiumize.me" />
+    <link rel="dns-prefetch" href="//torbox.app" />
+    <link rel="dns-prefetch" href="//strem.io" />
+    <link rel="dns-prefetch" href="//cinemeta-live.strem.io" />
+    <link rel="dns-prefetch" href="//v3-cinemeta.strem.io" />
+    <link rel="dns-prefetch" href="//torrentio.strem.fun" />
+    <link rel="dns-prefetch" href="//images.metahub.space" />
+    <link rel="preconnect" href="https://download.real-debrid.com" crossorigin />
+    <link rel="preconnect" href="https://real-debrid.com" crossorigin />
+    <style>
+        [focused], :focus { outline: 2px solid #7b5bf5 !important; outline-offset: 2px; }
+        button:focus { outline: 3px solid #a78bfa !important; outline-offset: 2px; }
+    </style>
+    <title>Stremio - Freedom to Stream</title>
+    <!-- This file is the patch MANIFEST: execution order = placeholder order
+         (never filename order), and the build fails if a patches/head file is
+         missing here, or a kernel/ patch inlines after a feature patch. -->
+<script>
+{{patches/head/kernel/runtime.js}}
+</script>
+<script>
+{{patches/head/kernel/core.js}}
+</script>
+<script>
+{{patches/head/kernel/server-url.js}}
+</script>
+    <script>
+{{patches/head/kernel/keys.js}}
+    </script>
+    <script>
+{{patches/head/platform/keyboard-fix.js}}
+    </script>
+    <script defer="defer" src="runtime.js?v={{VERSION}}"></script>
+    <script defer="defer" src="main.js?v={{VERSION}}"></script>
+    <script defer="defer" src="service.js?v={{VERSION}}"></script>
+    <script defer="defer" src="webOSTV.js?v={{VERSION}}"></script>
+</head>
+
+<body><noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <div id="splash" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0a14;z-index:100001;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <img src="logo.png" width="100" style="margin-bottom:1.5rem;opacity:0.9;">
+        <div style="color:rgba(255,255,255,0.5);font-size:1rem;font-family:PlusJakartaSans,sans-serif;">Loading...</div>
+        <div style="margin-top:1rem;width:120px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;">
+            <div id="splash-bar" style="width:0%;height:100%;background:#7b5bf5;border-radius:2px;transition:width 0.3s;"></div>
+        </div>
+    </div>
+    <div id="patch-version" style="position:fixed;bottom:4px;right:8px;color:rgba(255,255,255,0.3);font-size:10px;z-index:99999;pointer-events:none;">v{{VERSION}}</div>
+</body>
+<!-- kernel (body region): the rest of the shared toolbox — inlines first. -->
+<script>
+{{patches/head/kernel/ui.js}}
+</script>
+<script>
+{{patches/head/kernel/native-player.js}}
+</script>
+<script>
+{{patches/head/kernel/device.js}}
+</script>
+<script>
+{{patches/head/kernel/settings-store.js}}
+</script>
+<script>
+{{patches/head/kernel/diagnostics-registry.js}}
+</script>
+<script>
+{{patches/head/kernel/streams.js}}
+</script>
+<script>
+{{patches/head/kernel/dom-watch.js}}
+</script>
+<script>
+{{patches/head/kernel/playback-health.js}}
+</script>
+<script>
+{{patches/head/platform/sw-register.js}}
+</script>
+<script>
+{{patches/head/player/dv-hdr-handling.js}}
+</script>
+<script>
+{{patches/head/player/error-messages.js}}
+</script>
+<script>
+{{patches/head/platform/splash.js}}
+</script>
+<script>
+{{patches/head/player/resolution-indicator.js}}
+</script>
+<script>
+{{patches/head/player/remote-color-buttons.js}}
+</script>
+<script>
+{{patches/head/platform/watchdog.js}}
+</script>
+<script>
+{{patches/head/platform/memory-pressure.js}}
+</script>
+<script>
+{{patches/head/platform/install-prompt.js}}
+</script>
+<script>
+{{patches/head/diagnostics/blob.js}}
+</script>
+<script>
+{{patches/head/library/lazy-posters.js}}
+</script>
+<script>
+{{patches/head/player/channel-seek.js}}
+</script>
+<script>
+{{patches/head/player/zoom-correction.js}}
+</script>
+<script>
+{{patches/head/platform/fkey-suppress.js}}
+</script>
+<script>
+{{patches/head/platform/system-font.js}}
+</script>
+<script>
+{{patches/head/platform/exit-button.js}}
+</script>
+<script>
+{{patches/head/player/speed-volume-persist.js}}
+</script>
+<script>
+{{patches/head/subtitles/full-filenames.js}}
+</script>
+<script>
+{{patches/head/subtitles/embedded-delay.js}}
+</script>
+<script>
+{{patches/head/player/external-streams.js}}
+</script>
+<script>
+{{patches/head/player/prefetch-next-episode.js}}
+</script>
+<script>
+{{patches/head/torrents/webtorrent-streaming.js}}
+</script>
+<script>
+{{patches/head/audio/graph.js}}
+</script>
+<script>
+{{patches/head/audio/force-stereo.js}}
+</script>
+    <script>
+{{patches/head/audio/delay.js}}
+    </script>
+    <script>
+{{patches/head/player/autoplay-best.js}}
+    </script>
+    <script>
+{{patches/head/library/mark-season-watched.js}}
+    </script>
+<script>
+{{patches/head/settings/settings-ui.js}}
+</script>
+
+<!-- #22: Low Memory Mode -->
+<script>
+{{patches/head/torrents/low-memory-mode.js}}
+</script>
+
+<!-- #22: Auto-Rebuffer on Stall -->
+<script>
+{{patches/head/player/auto-rebuffer.js}}
+</script>
+
+<!-- #22: Stream Stats Overlay -->
+<script>
+{{patches/head/player/stream-stats.js}}
+</script>
+
+<!-- #22/#28 — Playback performance: buffering mitigations -->
+<script>
+{{patches/head/player/video-prep.js}}
+</script>
+<script>
+{{patches/head/player/quiet-mode.js}}
+</script>
+<script>
+{{patches/head/player/auto-native.js}}
+</script>
+<script>
+{{patches/head/player/honest-stall.js}}
+</script>
+<script>
+{{patches/head/diagnostics/panel.js}}
+</script>
+<script>
+{{patches/head/player/heavy-stream-help.js}}
+</script>
+<script>
+{{patches/head/settings/server-url-manager.js}}
+</script>
+
+</html>

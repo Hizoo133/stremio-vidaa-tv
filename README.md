@@ -1,17 +1,17 @@
 <p align="center">
-  <img src="logo.png" alt="Stremio" width="120" />
+  <img src="upstream/theater-1.10.0/logo.png" alt="Stremio" width="120" />
 </p>
 
 <h1 align="center">Stremio for Hisense Projectors &amp; VIDAA TVs</h1>
 
 <p align="center">
-  Built because the official <strong>Stremio Lite</strong> on Hisense projectors is broken and feature-limited. A full Stremio experience that actually works on PX3-Pro, M2 Pro, C2, C2 Mini, and any VIDAA TV.
+  The official Stremio app for VIDAA, plus a maintained patch layer that fixes what's broken on these TVs and adds what official builds won't ship. A full Stremio experience that actually works on PX3-Pro, M2 Pro, C2, C2 Mini, and any VIDAA TV.
 </p>
 
 <p align="center">
   <a href="https://noobygains.github.io/stremio-vidaa-tv/"><img src="https://img.shields.io/website?label=GitHub%20Pages&logo=github&up_message=online&down_message=offline&url=https%3A%2F%2Fnoobygains.github.io%2Fstremio-vidaa-tv%2F" alt="Pages status" /></a>
-  <img src="https://img.shields.io/badge/build-v7-orange" alt="Build version" />
-  <img src="https://img.shields.io/badge/core-stremio--core--web%20v5%20(0.55.0)-purple" alt="Core version" />
+  <img src="https://img.shields.io/badge/build-v9-orange" alt="Build version" />
+  <img src="https://img.shields.io/badge/core-stremio--core--web%200.65.1-purple" alt="Core version" />
   <img src="https://img.shields.io/badge/platform-VIDAA%20OS-green" alt="Platform" />
   <a href="https://github.com/NoobyGains/stremio-vidaa-tv/stargazers"><img src="https://img.shields.io/github/stars/NoobyGains/stremio-vidaa-tv?style=social" alt="GitHub Stars" /></a>
 </p>
@@ -28,13 +28,48 @@ If you own a **Hisense Laser projector** (PX3-Pro, PX1-Pro, PX1HE, M2 Pro, Smart
 
 This project was originally built to get Stremio working on a **Hisense PX3-Pro Ultra Short Throw Triple Laser 4K Projector**. It grew because users of other projectors and VIDAA TVs asked for help, so everything is designed to work on both.
 
-## What you get
+The base is Stremio's own Theater 1.10.0 TV app (the exact build Hisense ships, kept pristine and hash-locked), the official stremio-core v5 WASM engine from Stremio's npm releases, and a **patch layer** — our own code — that is the actual source of this project. Everything the patch layer claims to do is listed honestly below, including what it *can't* do.
 
-- **Full Stremio**, not Lite — community addons (Torrentio, etc.), streaming server support, transcoding, external debrid services all work.
-- **Modern stremio-core v5 WASM engine** grafted onto the original Stremio Theater v1.9.2 TV frontend (built for D-pad navigation and 10-foot viewing distance — perfect for projectors).
-- **Projector-first defaults** — no full-screen error overlays blocking your remote, large UI sizing, Method 2 (bookmark) as the reliable install path.
-- **Every custom feature is a toggle** in Settings &gt; STREMIO TV so you can turn anything on or off per device.
-- **Reverse-engineered VIDAA integration** for native player handoff, hardware codec detection, trusted-domain registration, and launcher installation.
+## What this build actually improves over the official app
+
+Every row is something the patch layer does on top of the pristine upstream app — or something upstream already did that we deliberately left alone. Nothing on this list is aspirational.
+
+| Area | Improvement over official |
+|---|---|
+| **Search & keyboard** | The VIDAA on-screen keyboard sets input values without firing the events the app listens for — search and the server URL field never saw your typing. Multi-layer fix in the app's own text field wiring |
+| **Streaming server** | First-class support: edit the URL in Settings with **Auto-Detect** (manual LAN sweep, never automatic), reachability check on confirm, `?server=` URL parameter, periodic health monitoring, and automatic recovery from the app core's one-shot "Offline" false alarm |
+| **Native player handoff** | Yellow button opens the current stream in the TV's own player (hardware DV/HDR decode). **Honest by design**: it verifies the app actually backgrounded and tells you when the TV didn't cooperate — never claims success it can't confirm. Optional auto-handoff for MKV streams (the container — not the codec — is what chokes the VIDAA webview) |
+| **Stall recovery** | One coordinator watches playback; seeks to recover automatically, and if a stream is genuinely too heavy it offers real choices (switch to a lighter source, open in the native player, set up a server) instead of an eternal spinner |
+| **Codec failure honesty** | Codec-specific error messages ("this HEVC-in-MP4 won't decode — try an MKV source") instead of the generic "video not supported" |
+| **Force transcode** | Blue button re-loads the current stream through your streaming server as H.264 — one press when you know the codec won't fly |
+| **Stream stats overlay** | Info/Red shows **verified** facts: what's feeding the video (direct / server-transcoded / torrent), file hash, size, name, codec, buffer coverage, estimated bitrate, dropped frames, and what audio tracks the file carries |
+| **Playback memory** | Playback speed and volume persist across sessions — saved only from real user changes, never from the engine's own resets (the old approach silently destroyed preferences) |
+| **Audio sync** | Shift+[ / Shift+] adjust audio delay ±(0–500 ms). TV speakers/soundbars drift is real |
+| **Embedded subtitle sync** | [ / ] shift subtitles that come **inside the file** — the official app has no delay control for those at all (its Delay option only covers addon subtitles) |
+| **Subtitle names** | The subtitle picker shows full descriptive filenames (source, release group) instead of upstream's truncated labels |
+| **External services** | "On Netflix" streams: the official app shows a dead-end "no deep linking" dialog. Ours asks for confirmation and opens the service's website in the TV browser — and tells you honestly if the browser blocked it |
+| **Interface languages** | Fixes Theater 1.10.0's non-reactive `interfaceLanguage` binding so switching among all 50 interface languages in Settings loads the translation chunk immediately |
+| **System font fallback** | Auto-detects VIDAA firmware (`P0218`, etc.) where the custom `PlusJakartaSans` font collapses word spacing or doubles bold titles, plus a manual **Use System Font** toggle in **Settings > Vidaa TV** |
+| **Direct HLS (`.m3u8`) streams** | Bypasses the local streaming-server `canPlayStream` probe for direct `.m3u8` HLS streams so live/HLS addon streams play directly without a streaming server |
+| **Launcher install** | One-click installer (DNS method, spoofing `vidaahub.com` + `*.vidaahub.com`) writes the app registry (`websdk/Appinfo.json`) directly — working around firmware that reports install success and then silently drops the icon. Plus the in-app banner and [Sidee](https://github.com/Empi9245/Sidee) support |
+| **Exit & crash hygiene** | A real Exit that calls `Hisense_Exit` (official relies on `window.close`, a no-op for the webview), suppression of the F-key fullscreen crash, a freeze watchdog that recovers hung UI, and memory-pressure monitoring |
+| **720p correction** | Auto zoom correction for projectors and TVs that report 720p viewports (with mode picker) |
+| **Offline boot** | Service worker caches the whole app — instant launch after the first load, with update refreshes deferred until you're not watching something |
+| **Boot size** | The patch layer ships minified (61 % smaller) — less parse work for the TV's CPU on every boot |
+| **Mark season watched** | One button marks the season you're looking at (upstream only offers per-item and per-episode) — with honest per-episode success reporting |
+| **Direct torrent streaming** | Experimental WebTorrent playback for magnet links with an honest failure story (see below) |
+
+Things the official app already does well that we deliberately **did not** duplicate: subtitle size/language persistence, the subtitle Off option, and Trakt/library sync all live in the app's own engine settings — our layer leaves them to it.
+
+## Honest limitations
+
+Believed-but-unverifiable claims are worse than none, so:
+
+- **Switching audio tracks server-side is impossible today.** We verified against Stremio's official clients and the server's URL surface: there is no audio-selection parameter (the community has asked for years). The stats overlay shows what tracks a file *carries*; switching means the native player (Yellow).
+- **Native handoff is fire-and-forget.** VIDAA firmware ignores most platform messages; the handoff verifies backgrounding and reports failure honestly, but on some firmware nothing will open the native player. That's the TV, not a bug we can patch.
+- **Direct torrent streaming rarely works.** Browsers only find peers over WebRTC, and almost nothing seeds over WebRTC — we measured 0/40 popular torrents with any WebRTC-capable peers. It's kept as a last resort for web-seeded files, with a truthful "not web-seeded" message instead of an eternal "Connecting…".
+- **Dolby Vision in MP4 containers** crashes the webview (use MKV sources); **AV1** and **>4K** need a streaming server. See the codec matrix.
+- **Engine updates are manual.** The Theater UI has no public source repo; adopting a future official version is a careful re-baseline, not a pull.
 
 ## Requirements
 
@@ -46,11 +81,11 @@ No streaming server required for most users. With Real-Debrid + Torrentio, strea
 
 ## Installation
 
-**Projector owners: use Method 1 (bookmark). It works everywhere and takes 30 seconds.** The installer (Method 2) only adds a permanent launcher icon on certain retail TVs — on projectors and most newer firmware, the install API silently refuses even when it reports success. The bookmark version is identical, just launched from the TV Browser instead of the launcher.
+**Start with Method 1 (bookmark) — it works everywhere and takes 30 seconds.** If you want a permanent launcher icon, prefer Method 2 (Sidee): it registers the tile over the same channel the official Hisense phone app uses, so it keeps working on newer firmware where browser-based install APIs have been restricted. The one-click installer (Method 3) also works on many TVs thanks to its app-registry write, but needs a PC and a temporary DNS change.
 
 ### Method 1: Bookmark in the TV Browser (works on everything)
 
-1. On your TV/projector, open the **Internet Browser** (Home &gt; Apps &gt; "Browser" or the globe icon — check **All Apps** if you don't see it, some firmware hides it by default).
+1. On your TV/projector, open the **Internet Browser** (Home > Apps > "Browser" or the globe icon — check **All Apps** if you don't see it, some firmware hides it by default).
 2. Go to:
    ```
    https://noobygains.github.io/stremio-vidaa-tv/
@@ -59,9 +94,43 @@ No streaming server required for most users. With Real-Debrid + Torrentio, strea
 
 That's it. The app caches itself via a Service Worker so it launches instantly after the first load.
 
-### Method 2: One-Click Installer (retail TVs only — not reliable on projectors)
+### Method 2: Sidee — permanent launcher tile (recommended on newer firmware)
 
-Adds a permanent launcher icon. Requires a PC on the same network. Only works on some retail TVs; on projectors and newer VIDAA builds the firmware accepts the install call but never actually adds the icon, so just use Method 1 there.
+[Sidee](https://github.com/Empi9245/Sidee) installs web apps as permanent launcher tiles over the same local control channel the official Hisense phone app uses (SSDP discovery + PIN pairing, MQTT/TLS). Because it goes through the TV's own app-catalog mechanism, it keeps working on newer firmware where `Hisense_installApp` is silently dropped. No developer mode, no DNS changes.
+
+1. Download Sidee from its [releases page](https://github.com/Empi9245/Sidee/releases) (Windows ZIP or macOS) and run it — no admin rights needed, nothing installs.
+2. Its dashboard opens in your PC browser. Make sure the PC and TV are on the same network, then press **Find TV**.
+3. Click **Request code** — a 4-digit PIN appears on the TV screen. Enter it in the dashboard and confirm.
+4. Pick **Stremio**, optionally paste your streaming-server URL, and confirm. The tile persists across reboots — Sidee doesn't need to keep running.
+
+**Installing this repo's build instead of the upstream one.** Sidee's built-in Stremio option installs the upstream `NoobyGains` deployment and has no custom-URL option. To install the build from this repository:
+
+1. Clone Sidee and install its requirements:
+   ```bash
+   git clone https://github.com/Empi9245/Sidee.git
+   cd Sidee
+   pip install -r requirements.txt
+   ```
+2. Edit the `stremio` preset in `core/presets.py` to point at this deployment (keep `app_id` as `stremiodebug` — it overwrites any old Stremio tile instead of duplicating it):
+   ```python
+   "stremio": {
+       "name": "Stremio",
+       "app_id": "stremiodebug",
+       "url": "https://noobygains.github.io/stremio-vidaa-tv/?install_source=sidee",
+       "image": "https://noobygains.github.io/stremio-vidaa-tv/icon.png",
+       ...
+   }
+   ```
+3. Run `python sidee.py` and pair as described above.
+
+Sidee's optional streaming-server field is appended to the URL as `&server=` — this app already understands it (see [Streaming Server](#streaming-server-optional)).
+
+### Method 3: One-Click Installer (DNS-based, with app-registry write fallback)
+
+Adds a permanent launcher icon. Requires a PC on the same network. The installer tries two paths, in order:
+
+- **App registry write (preferred):** when the TV exposes `HiUtils_createRequest`, the installer reads `websdk/Appinfo.json` — the launcher's own web-app list — and writes the Stremio entry into it directly. This lands the icon even on firmware that accepts `Hisense_installApp`, reports success, and then never adds the entry (the silent drop). Requires a full TV restart afterward. If the registry can't be read, the installer never writes blind — it falls back to the legacy path.
+- **Legacy API:** the classic `Hisense_installApp()` call, as before.
 
 1. Download and run the installer:
    ```bash
@@ -69,15 +138,15 @@ Adds a permanent launcher icon. Requires a PC on the same network. Only works on
    cd stremio-vidaa-tv/installer
    python server.py
    ```
-2. On your **TV**: go to **Settings &gt; Network &gt; DNS** and set it to the IP shown by the script.
+2. On your **TV**: go to **Settings > Network > DNS** and set it to the IP shown by the script.
 3. On your **TV**: open the **Internet Browser** and go to `https://vidaahub.com`.
 4. Press **Install Stremio**.
 5. Revert DNS to automatic and fully restart your TV (unplug for 10 seconds if needed).
-6. If Stremio appears in the launcher — great. If not, your firmware blocks launcher installation; fall back to Method 1.
+6. If Stremio appears in the launcher — great. If not, check the diagnostics panel on the installer page (it records which install path ran), and fall back to Method 1 or 2.
 
 The installer only spoofs `vidaahub.com`, forwards normal DNS requests upstream, and serves the install UI/icons locally to avoid GitHub Pages lookups during installation.
 
-### Method 3: Self-hosted
+### Method 4: Self-hosted
 
 ```bash
 git clone https://github.com/NoobyGains/stremio-vidaa-tv.git
@@ -93,6 +162,7 @@ Then open `http://<your-pc-ip>:8000` on your TV.
 **Most users don't need this.** With Real-Debrid, your TV plays streams directly. No server required.
 
 You only need a streaming server if you:
+
 - Stream raw torrents without a debrid service
 - Play AV1 content (not supported on VIDAA hardware)
 - Want automatic transcoding for codecs your TV can't handle
@@ -107,13 +177,17 @@ docker run -d --name stremio-server -p 11470:11470 stremio/server
 
 Or install [Stremio desktop](https://www.stremio.com/downloads) on a PC, which includes the server automatically.
 
-**Connect it to the app** by adding `?server=` to the URL once:
+**Connect it to the app** at **Settings > Server > Edit URL**: type the address (e.g. `http://192.168.1.50:11470`) and confirm — the address is saved for every future session, and the app pings it with a timeout to tell you whether it answered. Not sure of the address? Press **Auto-Detect** in the same dialog to sweep the local network for a running Stremio server (it only runs when you press it).
+
+Shortcut: you can also add `?server=` to the URL once, and it is saved automatically:
 
 ```
 https://noobygains.github.io/stremio-vidaa-tv/?server=http://192.168.1.50:11470
 ```
 
-Replace `192.168.1.50` with your server's IP. The setting is saved automatically. You can also change it inside the app at **Settings > Server > Edit URL**.
+Replace `192.168.1.50` with your server's IP.
+
+**Server shows "Offline" but streaming works?** The status row reflects a one-shot check the app core makes against the server. Our health monitor self-heals a false "Offline" within about a minute (rate-limited), and the row also honors our own periodic probe. For ground truth, press the **Green** remote key (outside the player): that overlay shows the live health check. If it reports offline on a GitHub Pages (https) installation while streams play fine, your TV blocks cross-origin checks — install via the http installer for full server integration.
 
 ## Tested Codec Support (Hisense PX1HE / 100L5H)
 
@@ -136,144 +210,154 @@ DRM: Widevine, PlayReady, and ClearKey are all supported.
 
 > Other VIDAA TV models may have different codec support. These results are from a PX1HE running VIDAA U06.29 with a MediaTek MT9900 chipset.
 
-## Features
-
-| Feature | Description |
-|---|---|
-| **Full addon support** | All community addons work, including Torrentio with Real-Debrid |
-| **Dolby Vision playback** | DV+HDR streams in MKV play natively at 4K. Smart stall detection warns only on actual failure |
-| **Server URL sync** | `?server=` properly syncs to the WASM core. Auto-reloads when changed in Settings |
-| **VIDAA keyboard fix** | 3-layer fix for the VIDAA on-screen keyboard not triggering search |
-| **Resolution indicator** | Shows current playback quality (4K/1080p/720p) in the player |
-| **Splash screen** | Loading screen with progress bar while WASM initialises |
-| **Error messages** | Codec-specific, actionable messages instead of generic "video not supported" |
-| **One-click install** | Permanent launcher icon via the included installer |
-| **Service Worker** | Caches the entire app for instant boot after first load |
-| **720p zoom fix** | Auto-corrects viewport scaling on projectors and 720p-reporting TVs |
-| **Watchdog** | Auto-recovers from UI freezes |
-
-## Beyond Stremio Core
-
-This build includes fixes and features that go above and beyond what standard stremio-core provides. These are all implemented as self-contained patches in the `index.html` patch layer.
-
-### Crash & Stability Fixes
-
-| Fix | Description |
-|---|---|
-| **Suppress F key crash** ([#10](https://github.com/NoobyGains/stremio-vidaa-tv/issues/10)) | Prevents the VIDAA browser from crashing when the F key (fullscreen) is pressed. Fullscreen is meaningless on a TV — the browser is always fullscreen. |
-| **Exit button for TV** ([#6](https://github.com/NoobyGains/stremio-vidaa-tv/issues/6)) | Adds an "Exit Stremio" button to Settings. Wired to `Hisense_Exit()` on VIDAA devices for a clean app exit. |
-
-### Playback Persistence
-
-| Fix | Description |
-|---|---|
-| **Save playback speed & volume** ([#9](https://github.com/NoobyGains/stremio-vidaa-tv/issues/9)) | Remembers your preferred playback speed and volume across sessions via localStorage. Automatically restored on each video. |
-| **Fix subtitle size on start** ([#8](https://github.com/NoobyGains/stremio-vidaa-tv/issues/8)) | Persists subtitle size preference and force-applies it when the player initialises, preventing the core from resetting it. |
-| **Remember subtitle language** ([#7](https://github.com/NoobyGains/stremio-vidaa-tv/issues/7)) | Stores your selected subtitle language and auto-selects a matching track when a new video starts. Supports partial language matching (e.g. "en" matches "eng"). |
-
-### Subtitle Enhancements
-
-| Fix | Description |
-|---|---|
-| **Subtitle off/unload option** ([#11](https://github.com/NoobyGains/stremio-vidaa-tv/issues/11)) | Injects a "None/Off" option into the subtitle picker so you can disable subtitles entirely. Standard Stremio has no way to turn subtitles off once enabled. |
-| **Full subtitle filenames** ([#14](https://github.com/NoobyGains/stremio-vidaa-tv/issues/14)) | Intercepts addon subtitle responses and caches full filenames. Patches the subtitle picker DOM to show descriptive names instead of truncated labels. |
-
-### Native Player Integration
-
-| Fix | Description |
-|---|---|
-| **Full title to native player** ([#12](https://github.com/NoobyGains/stremio-vidaa-tv/issues/12)) | Scrapes the title from the player DOM and detail pages, then passes it in the native VIDAA player handoff payload so the system player shows the correct title. |
-| **Mark as watched after native handoff** ([#13](https://github.com/NoobyGains/stremio-vidaa-tv/issues/13)) | After launching the native player, estimates progress and dispatches a mark-as-watched action to stremio-core so your library stays in sync. |
-
-### Performance
-
-| Fix | Description |
-|---|---|
-| **Prefetch next episode** ([#15](https://github.com/NoobyGains/stremio-vidaa-tv/issues/15)) | When watching a series, automatically fires a background fetch for the next episode's stream URL to warm the streaming server cache and reduce load time. |
-
-### Existing VIDAA-Specific Features
-
-These were already in the build before the above patches:
-
-- **VIDAA keyboard fix** — 3-layer interception for the VIDAA on-screen keyboard
-- **Native VIDAA player handoff** — Yellow button opens current stream in the system player for full DV/HDR hardware decode
-- **VIDAA API integration** — Trusted domain registration, device capability detection, real-time video state observers
-- **One-click launcher install** — Permanent TV launcher icon via `Hisense_installApp`
-- **Channel Up/Down quick seek** — 60-second skip forward/back
-- **720p viewport correction** — Auto-zoom fix for projectors and 720p-reporting TVs
-- **Memory pressure monitoring** — Warns when JS heap usage exceeds 85%
-- **Smart DV/HDR handling** — Detects stalled DV playback and offers native player, transcode, or alternative source
-
 ## Remote Control Shortcuts
 
 | Button | Action |
 |---|---|
-| **Red** | Toggle resolution indicator (or Stream Stats overlay in player when enabled) |
+| **Red** | Toggle stream stats overlay in player (verified facts: source, hash, size, buffer, frames) / resolution indicator outside |
 | **Green** | Show/hide server health overlay (status, latency, version) |
+| **Green + Red** | Full diagnostics panel (device, playback, debug blob) |
 | **Yellow** | Open current stream in native VIDAA player (full hardware DV/HDR decode) |
-| **Blue** | Force transcode current stream |
-| **Info / Display** | Show stream details (resolution, buffer, codec, VIDAA device info) |
+| **Blue** | Force transcode current stream through your server |
+| **Info / Display** | Toggle stream stats / stream info (when stats are off) |
+| **[ / ]** | Embedded subtitles earlier / later (25 ms steps) |
+| **Shift+[ / Shift+]** | Audio delay − / + (25 ms steps) |
+| **Ch+ / Ch−** | Skip forward / back 60 seconds |
 
-## Troubleshooting
+Every custom feature is a toggle in **Settings > Vidaa TV** — you can turn anything off per device.
 
-> **On projectors, Method 2 is the reliable path.** Most current Hisense projectors (PX3-Pro, M2 Pro, C2, C2 Mini, Smart Mini C2) silently drop `Hisense_installApp` even when it returns success — the launcher icon never appears no matter how many times you restart. Just bookmark `noobygains.github.io/stremio-vidaa-tv` in the TV's Internet Browser and open it from there. It works identically to the installed version.
+## Features in detail
 
-| Problem | Solution |
-|---|---|
-| **Installer: "Install" button does nothing** | You need Developer Mode. Normally: Settings > System > About > press **1234** on the remote. **Your projector remote has no number buttons?** See "No number buttons on your remote" below. |
-| **Installer says success but no launcher app appears** | This is the firmware-level silent-drop on current Hisense projectors and newer VIDAA builds — not something we can fix. Skip the launcher, use **Method 2** (bookmark in the TV Browser). |
-| **No number buttons on your remote (projectors, M2/C2/PX3-Pro)** | Try in this order: (1) Install **RemoteNow** on your phone — its virtual numpad enters `1234` on the About screen; (2) Check **Settings > System > Developer Options** directly — some newer firmware has the toggle without needing `1234`; (3) Try the hidden key sequence: **Home ×3, Up ×2, Right, Left, Right, Left, Right**; (4) Plug in a USB keyboard and type `1234`. If none of that works, skip Developer Mode entirely and use Method 2. |
-| **Can't find the browser on TV** | The Internet Browser may be hidden. Go to Home > Apps > All Apps and look for "Browser" or a globe icon. |
-| **"Server Offline" in Settings** | Your streaming server must be running on a device on the same network. Test by visiting `http://<server-ip>:11470/heartbeat` in a browser. Most Real-Debrid users don't need a server at all. |
-| **Black screen during playback** | Could be: DV content in MP4 container (use MKV sources instead), content above 4K resolution, or an unsupported codec. The app detects stalled playback and offers options. |
-| **Playback stops after a few minutes** | Usually a server connection issue. If you don't use a streaming server, this shouldn't happen. If you do, check that the server URL is correct in Settings. |
-| **Search keyboard doesn't work** | Check the version number in the bottom-right corner. If it doesn't show v7, clear the browser cache or add `?v=new` to the URL. |
-| **App shows old version** | The service worker may be caching an old copy. Go to Settings > Clear Data, or clear the TV browser cache. |
-| **720p UI is clipped** | The app auto-detects 720p viewports and applies zoom correction. If it's not working, your TV may report a non-standard viewport size. |
+### Playback & recovery
+- **Stall coordinator** — one detector drives everything: automatic seek recovery for transient stalls; for genuinely heavy streams, a choice card (lighter source / native player / server setup) with honest advice about the actual cause
+- **Auto native player** (opt-in, MKV-only or all streams) — hands playback to the TV's hardware decoder, with verification and honest failure reporting
+- **Force transcode** (Blue) — re-load the stream through the server as H.264 when you know the codec won't fly
+- **Speed & volume memory** — restored on every video; saved only from your actual changes
+- **Next-episode prefetch** — warms the server cache for the next episode while you watch
+
+### Subtitles & audio
+- **Embedded subtitle delay** (`[`/`]`) — sync subtitles that come inside the file; offsets are exact and idempotent
+- **Audio delay** (Shift+`[`/`]`) — Web Audio DelayNode, 0…+500 ms (physically honest range)
+- **Stereo downmix** (opt-in) — surround to stereo with dialogue boost for basic TV speakers
+- **Full subtitle filenames** in the picker — source and release info instead of truncated labels
+- Subtitle size, language, and Off live in the app's own engine settings — we don't fight them
+
+### Server & networking
+- Edit URL + Auto-Detect + reachability ping; `?server=` ingest; URL changes mirrored both ways with the app core; false-Offline self-healing; preconnect + first-MB warm-up for faster stream starts
+- **External services** ("On Netflix") — confirm dialog then the service's website in the TV browser; honest notice if the browser blocks the window
+
+### TV integration & stability
+- Launcher install (app-registry write, `Hisense_installApp` fallback, in-app banner, Sidee)
+- Real exit (`Hisense_Exit`), F-key crash suppression, UI freeze watchdog (paused during native handoffs), memory-pressure monitor, 720p zoom correction with mode picker, splash with real boot progress
+- Service worker: full offline cache, instant boot, update refreshes deferred until playback ends
+
+### Diagnostics
+- Unified panel (Green+Red): device caps, playback state, debug blob, stream stats, torrent status — photograph it when reporting issues
+
+### Direct Torrent Streaming (Experimental)
+
+Streams magnet links from torrent addons directly in the browser via [WebTorrent](https://webtorrent.io) — no streaming server, no debrid. **Off by default**; enable it in Settings ▸ Torrent Streaming.
+
+**Set honest expectations: this is a last-resort path, not a debrid replacement.** A browser can only discover torrent peers over WebRTC, and almost nothing seeds over WebRTC. **We measured 0/40 popular Torrentio torrents with any WebRTC-capable peers (Oct 2026).** Unless a torrent has a web seed (archive.org-style), playback simply cannot start. For reliable streaming, use Real-Debrid with Torrentio or run a [Stremio streaming server](#streaming-server-optional).
+
+How it works in this build:
+
+- **webtorrent 3.0.21, pinned and vendored** — `upstream/vendor/webtorrent/3.0.21/`, syntax-lowered to ES2017 so older TV browsers can parse it. Nothing is fetched from a CDN at play time.
+- **Progressive streaming, not buffering** — playback goes through webtorrent's service-worker streaming server, so the first frame starts long before the file finishes downloading.
+- **Trackers: synced from [ngosang/trackerslist](https://github.com/ngosang/trackerslist)** — run `npm run sync-trackers` to refresh. Only the `wss://` websocket list applies (browsers can't speak udp/http announce).
+- **Honest failure story** — if zero peers connect within ~30 seconds, a dismissible message says the torrent isn't web-seeded and points at debrid / a streaming server, instead of an eternal "Connecting to peers…".
+- **Bandwidth saver** (on by default) — stops downloading pieces for parts you already watched after seeking; saves bandwidth (it cannot free memory — downloaded pieces stay cached until you leave the player).
 
 ## How It Works
 
 ```
-┌──────────────────────────────────────────┐
-│  Stremio Theater v1.9.2 Frontend (UI)    │
-│  58 original chunks: home, discover,     │
-│  search, player, settings, library,      │
-│  addons, login, details, video, etc.     │
-├──────────────────────────────────────────┤
-│  v7 Patch Layer (index.html)             │
-│  Server sync, codec detection, VIDAA API │
-│  integration, install-to-launcher, QoL   │
-├──────────────────────────────────────────┤
-│  v5 Core Bridge (core.chunk.js)          │
-│  External Worker loader → v5-worker.js   │
-├──────────────────────────────────────────┤
-│  stremio-core-web v5 WASM (0.55.0)      │
-│  stremio_core_web_bg.wasm                │
-├──────────────────────────────────────────┤
-│  Service Worker (sw.js)                  │
-│  Caches app shell for instant TV boot    │
-├──────────────────────────────────────────┤
-│  One-Click Installer (installer/)        │
-│  DNS spoof + HTTPS server + auto-install │
-└──────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│  Stremio Theater v1.10.0 (pristine, hash-locked)     │
+│  The official Hisense/VIDAA TV app, byte-identical   │
+│  to Stremio's CDN build — never hand-edited          │
+├──────────────────────────────────────────────────────┤
+│  VIDAA patch layer (this repo's own source)          │
+│  51 scripts: 12 kernel modules + 39 feature patches, │
+│  minified ES5 at build time (61 % smaller), plus     │
+│  17 surgical chunk-edits stored as data              │
+│  Kernel: runtime · core seam · keys · dom watcher ·  │
+│  stall coordinator · server-url · UI · settings · …  │
+├──────────────────────────────────────────────────────┤
+│  stremio-core-web 0.65.1 WASM engine                 │
+│  Official engine from Stremio's npm releases         │
+├──────────────────────────────────────────────────────┤
+│  Deconstructed src/ tree (scripts/deconstruct-*.mjs) │
+│  Pretty-printed multi-line modules in src/theater/,  │
+│  src/video/, and src/core/ (`npm run build:src`)     │
+├──────────────────────────────────────────────────────┤
+│  Service worker (generated)                          │
+│  Full-app offline cache; instant boot; deferred      │
+│  update refreshes; webtorrent streaming server       │
+├──────────────────────────────────────────────────────┤
+│  Build (scripts/build.mjs)                           │
+│  upstream/ + patches/ → app/ with SHA-256 locks;     │
+│  every upstream file verified on every build         │
+├──────────────────────────────────────────────────────┤
+│  One-Click Installer (installer/)                    │
+│  DNS spoof + HTTPS server + registry write install   │
+└──────────────────────────────────────────────────────┘
 ```
 
-The v7 patch layer sits between the original UI and the core engine. All patches are isolated in `index.html` as self-contained scripts, with two surgical one-line edits in the bundled chunks for error handling and transcoding hooks. The WASM binary and original UI chunks are untouched.
+The patch layer's kernel owns the shared machinery — one Promise-normalized seam to the WASM core, one remote-key dispatcher, one DOM watcher, one stall coordinator, one native-handoff guard — and feature patches consume it through versioned `window.__*` interfaces. All patches are ES5 (VIDAA browsers are old engines), self-contained, and independently loadable.
+
+The reference document [`docs/UPSTREAM_ANALYSIS.md`](docs/UPSTREAM_ANALYSIS.md) maps the upstream app and engine in depth, byte-verified.
+
+## Troubleshooting
+
+> **On projectors, Method 1 is the reliable path.** Most current Hisense projectors (PX3-Pro, M2 Pro, C2, C2 Mini, Smart Mini C2) silently drop `Hisense_installApp` even when it returns success — the launcher icon never appears no matter how many times you restart. The installer now writes the app registry directly to get around this, but the simplest answer remains: bookmark `noobygains.github.io/stremio-vidaa-tv` in the TV's Internet Browser and open it from there. It works identically to the installed version.
+
+| Problem | Solution |
+|---|---|
+| **Installer: "Install" button does nothing** | You need Developer Mode. Normally: Settings > System > About > press **1234** on the remote. **Your projector remote has no number buttons?** See "No number buttons on your remote" below. |
+| **Installer says success but no launcher app appears** | The installer tries a direct app-registry write (`websdk/Appinfo.json`) first — make sure you fully restarted the TV (unplug 10s), not just standby, since registry installs only surface after a restart. Still nothing? Copy the diagnostics blob from the installer page into a GitHub issue, and use Method 2 (Sidee) or Method 1 (bookmark) in the meantime. |
+| **Sidee can't find or pair with the TV** | PC and TV must be on the same network (no VPN, no guest Wi-Fi). If the PIN expires, just request a new code. More details in [Sidee's README](https://github.com/Empi9245/Sidee). |
+| **No number buttons on your remote (projectors, M2/C2/PX3-Pro)** | Try in this order: (1) Install **RemoteNow** on your phone — its virtual numpad enters `1234` on the About screen; (2) Check **Settings > System > Developer Options** directly — some newer firmware has the toggle without needing `1234`; (3) Try the hidden key sequence: **Home ×3, Up ×2, Right, Left, Right, Left, Right**; (4) Plug in a USB keyboard and type `1234`. If none of that works, skip Developer Mode entirely — Sidee (Method 2) doesn't need it, and neither does the bookmark (Method 1). |
+| **Can't find the browser on TV** | The Internet Browser may be hidden. Go to Home > Apps > All Apps and look for "Browser" or a globe icon. |
+| **"Server Offline" in Settings** | Your streaming server must be running on a device on the same network. Test by visiting `http://<server-ip>:11470/heartbeat` in a browser. Most Real-Debrid users don't need a server at all. |
+| **Black screen during playback** | Could be: DV content in MP4 container (use MKV sources instead), content above 4K resolution, or an unsupported codec. The app detects stalled playback and offers options. |
+| **Playback stops after a few minutes** | Usually a server connection issue. If you don't use a streaming server, this shouldn't happen. If you do, check the server URL is correct in Settings. |
+| **Search keyboard doesn't work** | Check the version number in the bottom-right corner matches the latest, then clear the browser cache (Settings > Clear Data or the TV browser's own settings) and reload. |
+| **App shows old version** | The service worker updates in the background and refreshes when you're not watching — to force it immediately, clear data or add `?v=new` to the URL. |
+| **720p UI is clipped** | The app auto-detects 720p viewports and applies zoom correction. If it's not working, cycle the mode in Settings > Vidaa TV > 720p Mode. |
+| **Words run together / no spaces between words / doubled bold text** | Some VIDAA firmware builds (`P0218`, etc.) misrender the custom `PlusJakartaSans` font metrics. Go to **Settings > Vidaa TV > Use System Font** and turn it **ON** (auto-enabled on `P0218`). |
+| **TV Browser forces mouse cursor instead of D-pad navigation** | The built-in VIDAA Internet Browser defaults to a virtual pointer cursor. To get native D-pad arrow navigation without a cursor, install Stremio as a launcher tile via **Method 2 (Sidee)** or **Method 3 (One-Click Installer)** so it runs in VIDAA's native App WebView instead of the Browser app. |
+
+## Development & Syncing
+
+The repo separates **replaceable Stremio artifacts** (`upstream/`, hash-locked) from **our VIDAA customizations** (`patches/`), assembled into the deployable site by `scripts/build.mjs`, and also provides a human-readable, multi-line deconstructed `src/` tree (`src/theater/`, `src/video/`, `src/core/`):
+
+```bash
+node scripts/sync-core.mjs --version <x.y.z>   # engine from npm (currently 0.65.1)
+node scripts/sync-translations.mjs             # translations from Stremio/stremio-translations
+npm run build && npx playwright test           # rebuild from upstream/ + patches/ & run full test suite
+npm run deconstruct                            # format built Theater/Video bundles into multi-line src/ modules
+npm run build:src                              # compile directly from edited src/ modules into app/ and root
+```
+
+See [docs/SYNC.md](docs/SYNC.md) for the full runbook — including how to bisect an engine version, how to add patches, and the kernel module map. Note: the compiled Theater UI has no open source — Stremio ships the TV app compiled-only from its CDN, and the public Stremio/stremio-web repo is a different, mouse-first app. Our copy was re-baselined to 1.10.0 (2026-10-08) straight from that CDN, cross-checked byte-identical against the community dump at [ananjaser1211/stremio-hisense-tvos](https://github.com/ananjaser1211/stremio-hisense-tvos) — full chain in SYNC.md (Provenance).
 
 ## Under the Hood
 
 This build is backed by reverse engineering of the VIDAA OS browser environment. Through live hardware scanning of a Hisense PX1HE, we mapped 110+ VIDAA JavaScript APIs, the full codec pipeline, HDR/Dolby Vision capabilities, DRM support, and the native app installation system.
 
 Key discoveries:
+
 - DV+HDR content in MKV containers plays natively at 4K in the VIDAA browser (no transcoding required)
 - The `Hisense_installApp` API enables permanent launcher installation from trusted domains
+- The web-app launcher list lives in `websdk/Appinfo.json` and can be updated directly via `HiUtils_createRequest` — the fallback used when firmware silently drops `Hisense_installApp` (via [weinzii/vidaa-edge](https://github.com/weinzii/vidaa-edge))
 - Real-time video state observers (`Hisense_RegisterObserver`) provide live codec and HDR status
-- The `omi_platform.sendPlatformMessage` interface accepts native player handoff commands
+- The `omi_platform.sendPlatformMessage` interface accepts native player handoff commands (with verification — most firmware doesn't honor them; we check and report)
 
 ## Credits
 
 - [Stremio](https://github.com/Stremio) — original Stremio web app, core, and sideload tooling
-- [weinzii/vidaa-edge](https://github.com/weinzii/vidaa-edge) — VIDAA development toolkit used for API reverse engineering
+- [weinzii/vidaa-edge](https://github.com/weinzii/vidaa-edge) — VIDAA development toolkit used for API reverse engineering, including the `websdk/Appinfo.json` registry-write install technique
+- [Empi9245/Sidee](https://github.com/Empi9245/Sidee) — PIN-paired launcher-tile installer over the official Hisense control channel
 - [Stremio/stremio-hisense-install](https://github.com/Stremio/stremio-hisense-install) — original sideload script
 
 ## Community
@@ -283,9 +367,7 @@ Key discoveries:
 
 ## Support
 
-If this project helped you get Stremio working on your TV, consider starring the repo or buying me a coffee.
-
-<a href="https://buymeacoffee.com/noobygains"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="200" /></a>
+If this project helped you get Stremio working on your TV, consider starring the repo.
 
 ## Disclaimer
 

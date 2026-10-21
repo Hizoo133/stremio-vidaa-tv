@@ -1,10 +1,15 @@
 {
   "name": "stremio-vidaa-tv",
   "version": "1.0.0",
+  "siteVersion": 9,
   "description": "<p align=\"center\">\r   <img src=\"logo.png\" alt=\"Stremio\" width=\"120\" />\r </p>",
   "main": "main.js",
   "scripts": {
-    "test": "playwright test"
+    "build": "node scripts/build.mjs",
+    "build:src": "node scripts/build.mjs --from-src",
+    "deconstruct": "node scripts/deconstruct-theater.mjs",
+    "test": "playwright test",
+    "sync-trackers": "node scripts/sync-trackers.mjs"
   },
   "repository": {
     "type": "git",
@@ -19,7 +24,8 @@
   },
   "homepage": "https://github.com/NoobyGains/stremio-vidaa-tv#readme",
   "devDependencies": {
-    "@playwright/test": "^1.59.1",
+    "@playwright/test": "^1.64.0",
+    "esbuild": "^0.28.2",
     "serve": "^14.2.6"
   }
 }
