@@ -862,7 +862,7 @@ test.describe('Diagnostics', () => {
     expect(state.autoNativeAll).toBe('false');
   });
 
-  test('#33 — system font fallback toggle and P0218 firmware auto-detection', async ({ page }) => {
+  test('#33 / #36 — system font fallback, font-synthesis fix, and pointer hover tracker', async ({ page }) => {
     await installFakeVidaa(page, { firmware: 'V0000.01.00A.P0218' });
     await bootApp(page, { core: 'none' });
 
@@ -870,24 +870,33 @@ test.describe('Diagnostics', () => {
       enabled: window.__isSystemFontEnabled(),
       attr: document.documentElement.getAttribute('data-vidaa-system-font'),
       hasStyle: !!document.getElementById('vidaa-system-font-style'),
+      hasSynthesisFix: !!document.getElementById('vidaa-font-synthesis-fix'),
+      hasProbe: typeof window.__probeFontSpaceMetrics === 'function',
       registered: (window.__vidaaSettingsItems || []).some((i) => i.id === 'system-font-toggle' && i.lsKey === 'stremio_system_font'),
     }));
     expect(initial.enabled).toBe(true);
     expect(initial.attr).toBe('true');
     expect(initial.hasStyle).toBe(true);
+    expect(initial.hasSynthesisFix).toBe(true);
+    expect(initial.hasProbe).toBe(true);
     expect(initial.registered).toBe(true);
 
     const afterDisable = await page.evaluate(() => {
       window.__setSystemFont(false);
+      window.dispatchEvent(new MouseEvent('mousemove', { clientX: 250, clientY: 300 }));
       return {
         enabled: window.__isSystemFontEnabled(),
         attr: document.documentElement.getAttribute('data-vidaa-system-font'),
         hasStyle: !!document.getElementById('vidaa-system-font-style'),
+        hasSynthesisFix: !!document.getElementById('vidaa-font-synthesis-fix'),
+        pointerActive: window.__vidaaPointerActive,
       };
     });
     expect(afterDisable.enabled).toBe(false);
     expect(afterDisable.attr).toBe('false');
     expect(afterDisable.hasStyle).toBe(false);
+    expect(afterDisable.hasSynthesisFix).toBe(true);
+    expect(afterDisable.pointerActive).toBe(true);
   });
 
   test('#32 / #35 — installer server spoofs *.vidaahub.com subdomains and uses durable GitHub Pages icon on vidaahub.com', () => {
