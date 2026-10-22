@@ -292,17 +292,7 @@ if (/\{\{(CACHE_NAME|ASSETS)\}\}/.test(sw)) die('unresolved placeholder in sw.te
 // browser, and tests/webtorrent.spec.js pins its assembled structure
 // byte-level (the documented source exception) — the win isn't worth the churn.
 writeFileSync(join(APP, 'sw.js'), sw);
-
-// ---------- 5b. Sync built app/ artifacts to repo root (for gh-pages root deployment) ----------
-for (const f of collectFiles(APP, APP)) {
-  const rootDest = join(root, f.rel);
-  mkdirSync(dirname(rootDest), { recursive: true });
-  copyFileSync(f.abs, rootDest);
-}
-for (const obsolete of ['1477.chunk.js', 'a746d1fa53faf338bb5f.ttf', 'c492fc07c92a2ab3dc20.png', 'cbc88ebae6ffce2faec0.png', 'd06e3f0f8fbeb483cd8f.png']) {
-  const obsPath = join(root, obsolete);
-  if (existsSync(obsPath)) rmSync(obsPath, { force: true });
-}
+writeFileSync(join(APP, '.nojekyll'), '');
 
 if (lockDirty) {
   writeFileSync(LOCK_PATH, JSON.stringify(lock, null, 2) + '\n');
