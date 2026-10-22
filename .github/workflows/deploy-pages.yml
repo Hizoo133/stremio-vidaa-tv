@@ -26,6 +26,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies and build app/
+        run: |
+          npm ci --no-fund --no-audit
+          npm run build
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
