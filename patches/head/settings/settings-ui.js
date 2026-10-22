@@ -144,6 +144,7 @@
             'embedded-sub-delay-toggle',
             'embedded-sub-delay-offset',
             'autoplay-best-toggle',
+            'stream-compat-badges-toggle',
             'mark-season-toggle',
             '@720p-mode',
             'system-font-toggle',
@@ -155,6 +156,7 @@
             '@playback-diagnostics',
             '@safe-mode',
             '@reset-tweaks',
+            'copy-config-backup-url',
             'show-vidaa-diagnostics',
             '@exit'
         ];

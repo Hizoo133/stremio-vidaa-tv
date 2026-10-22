@@ -37,7 +37,9 @@ Every row is something the patch layer does on top of the pristine upstream app 
 | Area | Improvement over official |
 |---|---|
 | **Search & keyboard** | The VIDAA on-screen keyboard sets input values without firing the events the app listens for — search and the server URL field never saw your typing. Multi-layer fix in the app's own text field wiring |
-| **Streaming server** | First-class support: edit the URL in Settings with **Auto-Detect** (manual LAN sweep, never automatic), reachability check on confirm, `?server=` URL parameter, periodic health monitoring, and automatic recovery from the app core's one-shot "Offline" false alarm |
+| **Streaming server** | First-class support: edit the URL in Settings with **Auto-Detect** (manual LAN sweep, never automatic), reachability check on confirm, automatic `*.519b6502d940.stremio.net:12470` HTTPS wildcard bridge hints for Mixed Content, `?server=` URL parameter, periodic health monitoring, and automatic recovery from the app core's one-shot "Offline" false alarm |
+| **Stream compatibility badges** | Strictly opt-in **Stream Compatibility Badges** toggle in **Settings > Vidaa TV** (off by default): annotates stream cards with `⚠ MP4-DV (Prefer MKV)`, `⚠ AV1 (Needs Server)` / `✓ AV1 (Server Transcode)`, `✓ MKV HDR/DV`, and `⚠ Heavy Remux (>25GB)` before you press play |
+| **Settings backup URL (`?cfg=`)** | **Copy Settings Backup URL** in **Settings > Vidaa TV** exports all your VIDAA tweaks and server URL into a bookmarkable `?cfg=` URL parameter that auto-restores after a TV cache clear |
 | **Native player handoff** | Yellow button opens the current stream in the TV's own player (hardware DV/HDR decode). **Honest by design**: it verifies the app actually backgrounded and tells you when the TV didn't cooperate — never claims success it can't confirm. Optional auto-handoff for MKV streams (the container — not the codec — is what chokes the VIDAA webview) |
 | **Stall recovery** | One coordinator watches playback; seeks to recover automatically, and if a stream is genuinely too heavy it offers real choices (switch to a lighter source, open in the native player, set up a server) instead of an eternal spinner |
 | **Codec failure honesty** | Codec-specific error messages ("this HEVC-in-MP4 won't decode — try an MKV source") instead of the generic "video not supported" |
@@ -51,7 +53,7 @@ Every row is something the patch layer does on top of the pristine upstream app 
 | **Interface languages** | Fixes Theater 1.10.0's non-reactive `interfaceLanguage` binding so switching among all 50 interface languages in Settings loads the translation chunk immediately |
 | **System font fallback** | Strictly opt-in **System Font (Fix Text Spacing)** toggle in **Settings > Vidaa TV** (off by default so standard projector/TV typography is untouched) |
 | **Direct HLS (`.m3u8`) streams** | Bypasses the local streaming-server `canPlayStream` probe for direct `.m3u8` HLS streams so live/HLS addon streams play directly without a streaming server |
-| **Launcher install** | One-click installer (DNS method, spoofing `vidaahub.com` + `*.vidaahub.com`) writes the app registry (`websdk/Appinfo.json`) directly — working around firmware that reports install success and then silently drops the icon. Plus the in-app banner and [Sidee](https://github.com/Empi9245/Sidee) support |
+| **Launcher install** | One-click installer (DNS method, spoofing `vidaahub.com` + `*.vidaahub.com`) writes the app registry (`websdk/Appinfo.json`) directly — working around firmware that reports install success and then silently drops the icon — with an optional **Streaming Server URL** input, **Verify Install** read-back check, and `/go` HTTP quick-launch redirect (`--http-port`). Plus the in-app banner and [Sidee](https://github.com/Empi9245/Sidee) support |
 | **Exit & crash hygiene** | A real Exit that calls `Hisense_Exit` (official relies on `window.close`, a no-op for the webview), suppression of the F-key fullscreen crash, a freeze watchdog that recovers hung UI, and memory-pressure monitoring |
 | **720p correction** | Auto zoom correction for projectors and TVs that report 720p viewports (with mode picker) |
 | **Offline boot** | Service worker caches the whole app — instant launch after the first load, with update refreshes deferred until you're not watching something |
@@ -140,9 +142,12 @@ Adds a permanent launcher icon. Requires a PC on the same network. The installer
    ```
 2. On your **TV**: go to **Settings > Network > DNS** and set it to the IP shown by the script.
 3. On your **TV**: open the **Internet Browser** and go to `https://vidaahub.com`.
-4. Press **Install Stremio**.
-5. Revert DNS to automatic and fully restart your TV (unplug for 10 seconds if needed).
-6. If Stremio appears in the launcher — great. If not, check the diagnostics panel on the installer page (it records which install path ran), and fall back to Method 1 or 2.
+4. (Optional) Enter your **Streaming Server URL** (e.g. `http://192.168.1.50:11470`) to bake `&server=` directly into the launcher icon.
+5. Press **Install Stremio**, and optionally press **Verify Install** in the Diagnostics header to confirm the entry was written to `websdk/Appinfo.json` on disk.
+6. Revert DNS to automatic and fully restart your TV (unplug for 10 seconds if needed).
+7. If Stremio appears in the launcher — great. If not, check the diagnostics panel on the installer page (it records which install path ran), and fall back to Method 1 or 2.
+
+> **Tip (Quick-Launch without DNS change):** Run `python server.py --http-port 8080` and open `http://<your-pc-ip>:8080/go` in the TV browser to jump straight to `https://noobygains.github.io/stremio-vidaa-tv/?server=http://<your-pc-ip>:11470` without typing the long URL on the TV remote.
 
 The installer only spoofs `vidaahub.com`, forwards normal DNS requests upstream, and serves the install UI/icons locally to avoid GitHub Pages lookups during installation.
 
@@ -252,7 +257,8 @@ Every custom feature is a toggle in **Settings > Vidaa TV** — you can turn any
 - Service worker: full offline cache, instant boot, update refreshes deferred until playback ends
 
 ### Diagnostics
-- Unified panel (Green+Red): device caps, playback state, debug blob, stream stats, torrent status — photograph it when reporting issues
+- Unified panel (Green+Red): device caps, playback state, debug blob, stream stats, torrent status, plus a **Copy GitHub Issue URL** button that builds a pre-filled issue link — or photograph the screen when reporting issues
+- **Copy Settings Backup URL** (`Settings > Vidaa TV`): encodes your `stremio_*` preferences and server URL into a `?cfg=` query parameter that automatically restores your configuration when opened
 
 ### Direct Torrent Streaming (Experimental)
 

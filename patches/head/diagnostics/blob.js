@@ -96,6 +96,93 @@
         RT.toast(message, { at: 'bottom', ms: duration || 2200 });
     };
 
+    // ── Settings Config Backup URL (?cfg=...) ──────────────────────────
+    var TRANSIENT_BACKUP_KEYS = {
+        stremio_install_banner_last_success_at: true,
+        stremio_install_banner_method: true
+    };
+
+    window.__exportVidaaConfig = function() {
+        var out = {};
+        try {
+            for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                if (k && k.indexOf('stremio_') === 0 && !TRANSIENT_BACKUP_KEYS[k]) {
+                    out[k] = localStorage.getItem(k);
+                }
+            }
+        } catch (e) {}
+        return out;
+    };
+
+    window.__exportVidaaConfigUrl = function() {
+        var cfg = window.__exportVidaaConfig();
+        var json = JSON.stringify(cfg);
+        var b64 = '';
+        try {
+            b64 = btoa(unescape(encodeURIComponent(json)));
+        } catch (e) {
+            return window.location.origin + window.location.pathname;
+        }
+        return window.location.origin + window.location.pathname + '?cfg=' + encodeURIComponent(b64);
+    };
+
+    window.__importVidaaConfig = function(b64) {
+        if (!b64 || typeof b64 !== 'string') return 0;
+        try {
+            var json = decodeURIComponent(escape(atob(b64)));
+            var parsed = JSON.parse(json);
+            if (!parsed || typeof parsed !== 'object') return 0;
+            var count = 0;
+            for (var k in parsed) {
+                if (Object.prototype.hasOwnProperty.call(parsed, k) && k.indexOf('stremio_') === 0 && !TRANSIENT_BACKUP_KEYS[k]) {
+                    if (parsed[k] !== null && parsed[k] !== undefined) {
+                        RT.store.set(k, String(parsed[k]));
+                        count++;
+                    }
+                }
+            }
+            return count;
+        } catch (e) {
+            return 0;
+        }
+    };
+
+    // Auto-import ?cfg= on startup ONLY when present in location.search
+    try {
+        var cfgMatch = /[?&]cfg=([^&#]+)/.exec(window.location.search || '');
+        if (cfgMatch && cfgMatch[1]) {
+            var importedCount = window.__importVidaaConfig(decodeURIComponent(cfgMatch[1]));
+            if (importedCount > 0 && window.__showVidaaToast) {
+                setTimeout(function() {
+                    window.__showVidaaToast('Imported ' + importedCount + ' VIDAA settings from URL', 2600);
+                }, 800);
+            }
+        }
+    } catch (e) {}
+
+    // ── Pre-filled GitHub Issue URL builder ────────────────────────────
+    window.__buildDiagnosticIssueUrl = function() {
+        var diag = collectDiagnostics();
+        var caps = diag.vidaaCaps || {};
+        var model = caps.model || 'unknown';
+        var fw = caps.firmware || 'unknown';
+        var title = '[VIDAA] Issue report (' + model + ', build ' + (diag.build || 'dev') + ')';
+        var summary = {
+            build: diag.build,
+            patchVersion: diag.patchVersion,
+            vidaaDetected: diag.vidaaDetected,
+            model: model,
+            firmware: fw,
+            viewport: diag.viewport,
+            trackedSettings: diag.trackedSettings
+        };
+        var body = '### Device & Build Diagnostics\n```json\n' + JSON.stringify(summary, null, 2) + '\n```\n\n### What happened?\n';
+        return 'https://github.com/NoobyGains/stremio-vidaa-tv/issues/new?title='
+            + encodeURIComponent(title)
+            + '&body=' + encodeURIComponent(body);
+    };
+
     function playbackTrackedSettings() {
         var trackedKeys = [
             'stremio_720p_mode',
@@ -216,8 +303,29 @@
                 copyBtn.style.marginTop = '10px';
                 copyBtn.onclick = function() { copyBlob(textarea); };
 
+                var issueBtn = UI.button('Copy GitHub Issue URL', { id: 'vidaa-diag-issue-btn' });
+                issueBtn.style.marginTop = '10px';
+                issueBtn.style.marginLeft = '10px';
+                issueBtn.onclick = function() {
+                    var url = window.__buildDiagnosticIssueUrl();
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(url).then(function() {
+                            issueBtn.textContent = 'Issue URL Copied';
+                        }).catch(function() {
+                            textarea.value = url;
+                            textarea.focus();
+                            textarea.select();
+                        });
+                    } else {
+                        textarea.value = url;
+                        textarea.focus();
+                        textarea.select();
+                    }
+                };
+
                 body.appendChild(textarea);
                 body.appendChild(copyBtn);
+                body.appendChild(issueBtn);
                 textarea.focus();
                 textarea.select();
             }
@@ -285,6 +393,24 @@
     };
 
     RT.onRegistryReady(function() {
+        window.__registerVidaaSettingsItem({
+            id: 'copy-config-backup-url',
+            type: 'action',
+            label: 'Copy Settings Backup URL',
+            description: 'Exports your VIDAA settings and server URL into a bookmarkable ?cfg= link so you can restore after a TV cache clear.',
+            onClick: function() {
+                var url = window.__exportVidaaConfigUrl();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(function() {
+                        if (window.__showVidaaToast) window.__showVidaaToast('Settings backup URL copied', 2200);
+                    }).catch(function() {
+                        if (window.__showVidaaToast) window.__showVidaaToast('Backup URL: ' + url, 3500);
+                    });
+                } else if (window.__showVidaaToast) {
+                    window.__showVidaaToast('Backup URL ready (open Diagnostics to copy)', 2600);
+                }
+            }
+        });
         window.__registerVidaaSettingsItem({
             id: 'show-vidaa-diagnostics',
             type: 'action',

@@ -301,6 +301,36 @@
     font-size: 14px;
     line-height: 1.45;
   }
+
+  .server-url-box {
+    max-width: 580px;
+    margin: 0 auto 28px;
+    text-align: left;
+  }
+
+  .server-url-box label {
+    display: block;
+    font-size: 15px;
+    color: #9ea0bf;
+    margin-bottom: 8px;
+  }
+
+  .server-url-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 18px;
+    font-family: Consolas, "Courier New", monospace;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.06);
+    border: 2px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    outline: none;
+  }
+
+  .server-url-input:focus {
+    border-color: #7b5bf5;
+    box-shadow: 0 0 0 3px rgba(123, 91, 245, 0.35);
+  }
 </style>
 </head>
 <body>
@@ -315,6 +345,11 @@
     <div id="progressWrap" class="progress-bar-wrap">
       <div id="progressBar" class="progress-bar"></div>
     </div>
+  </div>
+
+  <div class="server-url-box">
+    <label for="serverUrlInput">Optional: Bake Streaming Server URL into Launcher</label>
+    <input id="serverUrlInput" class="server-url-input" type="text" placeholder="http://192.168.1.50:11470 (leave blank for default)" autocomplete="off" spellcheck="false">
   </div>
 
   <div class="buttons">
@@ -339,7 +374,10 @@
   <div class="diag-panel">
     <div class="diag-header">
       <div class="diag-title">Diagnostics</div>
-      <button id="btnCopyDiag" class="diag-copy" type="button">Copy Debug Blob</button>
+      <div>
+        <button id="btnVerify" class="diag-copy" type="button" style="margin-right: 8px;">Verify Install</button>
+        <button id="btnCopyDiag" class="diag-copy" type="button">Copy Debug Blob</button>
+      </div>
     </div>
     <div class="diag-help">
       Paste this into a GitHub issue if installation fails or says success but no launcher app appears.
@@ -378,7 +416,23 @@
   var btnUninstall = document.getElementById("btnUninstall");
   var notVidaa    = document.getElementById("notVidaa");
   var btnCopyDiag = document.getElementById("btnCopyDiag");
+  var btnVerify   = document.getElementById("btnVerify");
+  var serverUrlInput = document.getElementById("serverUrlInput");
   var diagText    = document.getElementById("diagText");
+
+  function normalizeServerUrl(raw) {
+    var s = String(raw || "").replace(/^\s+|\s+$/g, "");
+    if (!s) return "";
+    if (!/^https?:\/\//i.test(s)) s = "http://" + s;
+    return s.replace(/\/+$/, "");
+  }
+
+  function getInstallAppUrl() {
+    var srv = serverUrlInput ? normalizeServerUrl(serverUrlInput.value) : "";
+    if (!srv) return APP_URL;
+    return APP_URL + "&server=" + encodeURIComponent(srv);
+  }
+  window.__getInstallAppUrl = getInstallAppUrl;
 
   var hasLegacyInstall = (typeof Hisense_installApp === "function");
   var hasRegistryApi = (typeof HiUtils_createRequest === "function");
@@ -421,8 +475,14 @@
       attempted: false,
       readRet: null,
       writeRet: null,
+      verifiedOnDisk: null,
       entryCount: null,
       error: null
+    },
+    registryVerify: {
+      attempted: false,
+      verified: false,
+      entry: null
     },
     registryUninstall: {
       attempted: false,
@@ -600,12 +660,14 @@
   }
 
   function buildRegistryEntry() {
+    var targetUrl = getInstallAppUrl();
+    diagState.appUrl = targetUrl;
     return {
       Id: APP_ID,
       AppName: APP_NAME,
       Title: APP_NAME,
-      URL: APP_URL,
-      StartCommand: APP_URL,
+      URL: targetUrl,
+      StartCommand: targetUrl,
       IconURL: REGISTRY_ICON_URL,
       Icon_96: REGISTRY_ICON_URL,
       Image: REGISTRY_ICON_URL,
@@ -625,6 +687,37 @@
       writedata: JSON.stringify(apps)
     });
   }
+
+  function findRegistryEntry(apps) {
+    if (!apps || !Array.isArray(apps.AppInfo)) return null;
+    for (var i = 0; i < apps.AppInfo.length; i++) {
+      if (apps.AppInfo[i] && apps.AppInfo[i].Id === APP_ID) return apps.AppInfo[i];
+    }
+    return null;
+  }
+
+  function verifyRegistryEntry() {
+    diagState.registryVerify.attempted = true;
+    if (!hasRegistryApi) {
+      diagState.registryVerify.verified = false;
+      diagState.registryVerify.entry = null;
+      renderDiagnostics();
+      setStatus("Registry verification unavailable on this firmware (HiUtils_createRequest missing).", "warning");
+      return null;
+    }
+    var apps = readAppRegistry();
+    var found = findRegistryEntry(apps);
+    diagState.registryVerify.verified = !!found;
+    diagState.registryVerify.entry = found || null;
+    renderDiagnostics();
+    if (found) {
+      setStatus("Verified: Stremio entry is present in websdk/Appinfo.json (" + found.URL + "). Safe to restart TV.", "success");
+    } else {
+      setStatus("Stremio entry was not found in websdk/Appinfo.json.", "warning");
+    }
+    return found || null;
+  }
+  window.__verifyRegistryEntry = verifyRegistryEntry;
 
   function installViaRegistry() {
     diagState.registryInstall.attempted = true;
@@ -657,6 +750,8 @@
       renderDiagnostics();
       return false;
     }
+    var readBack = readAppRegistry();
+    diagState.registryInstall.verifiedOnDisk = !!findRegistryEntry(readBack);
     renderDiagnostics();
     return true;
   }
@@ -720,6 +815,8 @@
       }
 
       diagState.install.method = "legacy";
+      var targetUrl = getInstallAppUrl();
+      diagState.appUrl = targetUrl;
       renderDiagnostics();
 
       try {
@@ -729,7 +826,7 @@
           ICON_URL,
           ICON_URL,
           ICON_URL,
-          APP_URL,
+          targetUrl,
           STORE_TYPE,
           function(result) {
             showProgress(100);
@@ -843,6 +940,7 @@
     btnInstall.addEventListener("click", doInstall);
     btnUninstall.addEventListener("click", doUninstall);
     btnCopyDiag.addEventListener("click", copyDiagnostics);
+    if (btnVerify) btnVerify.addEventListener("click", verifyRegistryEntry);
     document.addEventListener("keydown", handleKeydown);
 
     if (!isVidaa) {

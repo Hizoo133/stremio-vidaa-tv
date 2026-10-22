@@ -907,9 +907,84 @@ test.describe('Diagnostics', () => {
     const serverPy = readFileSync(join(__dirname, '..', 'installer', 'server.py'), 'utf8');
     expect(serverPy).toContain('domain.endswith("." + SPOOF_DOMAIN)');
     expect(serverPy).toContain('"/shared/icon.png"');
+    expect(serverPy).toContain('path == "/go"');
+    expect(serverPy).toContain('--http-port');
 
     const installerHtml = readFileSync(join(__dirname, '..', 'installer', 'index.html'), 'utf8');
     expect(installerHtml).toContain('https://noobygains.github.io/stremio-vidaa-tv/icon.png?v=2');
     expect(installerHtml).toContain('\\.vidaahub\\.com$');
+  });
+
+  test('installer optional server URL input bakes ?server= into launcher entry and Verify Install reads back Appinfo.json', async ({ page }) => {
+    await page.route(/\/installer\/(index\.html)?$/, (route) =>
+      route.fulfill({ path: 'installer/index.html', contentType: 'text/html' }));
+
+    const existingRegistry = {
+      AppInfo: [{ Id: 'stremio-vidaa', AppName: 'Stremio', URL: 'https://noobygains.github.io/stremio-vidaa-tv/?install_source=method1' }]
+    };
+    await installFakeVidaa(page, { registry: existingRegistry });
+
+    await page.goto('/installer/');
+    await page.locator('#serverUrlInput').fill('192.168.1.50:11470');
+    const bakedUrl = await page.evaluate(() => window.__getInstallAppUrl());
+    expect(bakedUrl).toBe('https://noobygains.github.io/stremio-vidaa-tv/?install_source=method1&server=http%3A%2F%2F192.168.1.50%3A11470');
+
+    await page.locator('#btnVerify').click();
+    const verified = await page.evaluate(() => window.__verifyRegistryEntry());
+    expect(verified).toBeTruthy();
+    expect(verified.Id).toBe('stremio-vidaa');
+  });
+
+  test('HTTPS stremio.net wildcard bridge, opt-in stream compatibility badges, config backup URL, and diagnostic issue URL', async ({ page }) => {
+    await bootApp(page, { core: 'none' });
+
+    const results = await page.evaluate(() => {
+      var httpsUrl = window.__toStremioHttpsUrl('http://192.168.1.50:11470');
+      var nonIpUrl = window.__toStremioHttpsUrl('https://example.com:11470');
+
+      var av1NoSrv = window.__classifyStreamCompatibility('4K AV1 10bit.mkv', false);
+      var av1Srv = window.__classifyStreamCompatibility('4K AV1 10bit.mkv', true);
+      var mp4Dv = window.__classifyStreamCompatibility('Movie.2024.2160p.DV.HDR.mp4', false);
+      var mkvHdr = window.__classifyStreamCompatibility('Movie.2024.2160p.DV.HDR10.mkv', false);
+      var heavyNoSrv = window.__classifyStreamCompatibility('Remux 2160p HEVC 42.5 GB.mkv', false);
+
+      localStorage.setItem('stremio_server_url', 'http://192.168.1.50:11470');
+      localStorage.setItem('stremio_720p_mode', 'off');
+      var backupUrl = window.__exportVidaaConfigUrl();
+      var b64Match = /[?&]cfg=([^&#]+)/.exec(backupUrl);
+      localStorage.removeItem('stremio_server_url');
+      var importedCount = window.__importVidaaConfig(decodeURIComponent(b64Match[1]));
+      var restoredServer = localStorage.getItem('stremio_server_url');
+
+      var issueUrl = window.__buildDiagnosticIssueUrl();
+
+      return {
+        httpsUrl: httpsUrl,
+        nonIpUrl: nonIpUrl,
+        av1NoSrv: av1NoSrv && av1NoSrv.code,
+        av1Srv: av1Srv && av1Srv.code,
+        mp4Dv: mp4Dv && mp4Dv.code,
+        mkvHdr: mkvHdr && mkvHdr.code,
+        heavyNoSrv: heavyNoSrv && heavyNoSrv.code,
+        badgesDefaultOff: localStorage.getItem('stremio_stream_compat_badges') === null,
+        backupUrl: backupUrl,
+        importedCount: importedCount,
+        restoredServer: restoredServer,
+        issueUrl: issueUrl
+      };
+    });
+
+    expect(results.httpsUrl).toBe('https://192-168-1-50.519b6502d940.stremio.net:12470');
+    expect(results.nonIpUrl).toBeNull();
+    expect(results.av1NoSrv).toBe('av1-warn');
+    expect(results.av1Srv).toBe('av1-server');
+    expect(results.mp4Dv).toBe('mp4-dv-warn');
+    expect(results.mkvHdr).toBe('mkv-hdr-ok');
+    expect(results.heavyNoSrv).toBe('heavy-remux-warn');
+    expect(results.badgesDefaultOff).toBe(true);
+    expect(results.backupUrl).toContain('?cfg=');
+    expect(results.importedCount).toBeGreaterThanOrEqual(2);
+    expect(results.restoredServer).toBe('http://192.168.1.50:11470');
+    expect(results.issueUrl).toContain('https://github.com/NoobyGains/stremio-vidaa-tv/issues/new?title=');
   });
 });

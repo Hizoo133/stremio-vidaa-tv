@@ -161,12 +161,26 @@
             .then(function(r) { cb(r.ok); }, function() { cb(false); });
     }
 
+    // Convert an http://a.b.c.d[:11470] LAN URL to Stremio Desktop's official
+    // wildcard TLS endpoint (https://a-b-c-d.519b6502d940.stremio.net:12470)
+    // so an https:// GitHub Pages origin can reach the LAN server without
+    // Mixed Content blocking when the server's HTTPS endpoint is enabled.
+    window.__toStremioHttpsUrl = function(httpUrl) {
+        var m = /^http:\/\/(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?::(\d+))?(?:\/.*)?$/i.exec(String(httpUrl || '').replace(/^\s+|\s+$/g, ''));
+        if (!m) return null;
+        var port = m[5] ? parseInt(m[5], 10) : 11470;
+        var httpsPort = (port === 11470) ? 12470 : port;
+        return 'https://' + m[1] + '-' + m[2] + '-' + m[3] + '-' + m[4] + '.519b6502d940.stremio.net:' + httpsPort;
+    };
+
     // TV browsers can block fetch checks from an https page to an http LAN
     // server (mixed content) while <video> playback still works. Exposed for
     // tests.
     window.__mixedContentHint = function(pageProtocol, serverUrl) {
         if (pageProtocol === 'https:' && /^http:\/\//i.test(serverUrl)) {
-            return ' Note: TV browsers can block checks from an https page to an http server while playback still works — for full server integration, install the app via the http installer.';
+            var httpsAlt = window.__toStremioHttpsUrl(serverUrl);
+            var altSuffix = httpsAlt ? ' (or try HTTPS endpoint ' + httpsAlt + ').' : '.';
+            return ' Note: TV browsers can block checks from an https page to an http server while playback still works — for full server integration, install the app via the http installer' + altSuffix;
         }
         return '';
     };

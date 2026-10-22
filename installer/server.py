@@ -364,6 +364,19 @@ class InstallerHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
+        if path == "/go":
+            qs = urllib.parse.parse_qs(parsed.query)
+            local_ip = get_local_ip()
+            srv = qs.get("server", ["http://" + local_ip + ":11470"])[0]
+            target = (
+                "https://noobygains.github.io/stremio-vidaa-tv/?server="
+                + urllib.parse.quote(srv, safe="")
+            )
+            self.send_response(302)
+            self.send_header("Location", target)
+            self.end_headers()
+            return
+
         if path in ("/", "/index.html"):
             return super().do_GET()
 
@@ -402,12 +415,43 @@ def https_server(cert_path, key_path):
     print("[HTTPS] Listening on port " + str(HTTPS_PORT))
     server.serve_forever()
 
+
+def http_quick_launch_server(port):
+    """Run an optional plain-HTTP quick-launch & installer server (e.g. port 8080)."""
+    server = http.server.HTTPServer(("0.0.0.0", port), InstallerHandler)
+    print("[HTTP]  Listening on port " + str(port) + " (Quick-Launch: /go)")
+    server.serve_forever()
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
+def parse_http_port(argv):
+    """Return an optional HTTP port from --http-port <port> or STREMIO_HTTP_PORT."""
+    for idx, arg in enumerate(argv):
+        if arg == "--http-port" and idx + 1 < len(argv):
+            try:
+                return int(argv[idx + 1])
+            except ValueError:
+                pass
+        elif arg.startswith("--http-port="):
+            try:
+                return int(arg.split("=", 1)[1])
+            except ValueError:
+                pass
+    env_port = os.environ.get("STREMIO_HTTP_PORT", "").strip()
+    if env_port:
+        try:
+            return int(env_port)
+        except ValueError:
+            pass
+    return None
+
+
 def main():
     local_ip = get_local_ip()
+    http_port = parse_http_port(sys.argv[1:])
 
     print("")
     print("Stremio VIDAA Installer")
@@ -419,6 +463,9 @@ def main():
     print("Step 3: Open the TV browser and go to: https://" + SPOOF_DOMAIN)
     print("Step 4: Click \"Install Stremio\"")
     print("Step 5: Revert DNS to automatic and restart TV")
+    if http_port:
+        print("")
+        print("Quick-Launch (no DNS change): http://" + local_ip + ":" + str(http_port) + "/go")
     print("")
 
     # Generate SSL cert in a temp directory
@@ -442,6 +489,10 @@ def main():
     # Start HTTPS server in a background thread
     https_thread = threading.Thread(target=https_server, args=(cert_path, key_path), daemon=True)
     https_thread.start()
+
+    if http_port:
+        http_thread = threading.Thread(target=http_quick_launch_server, args=(http_port,), daemon=True)
+        http_thread.start()
 
     print("")
     print("Waiting for TV connection... (Ctrl+C to stop)")
