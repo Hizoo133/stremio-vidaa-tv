@@ -1,11 +1,9 @@
 <p align="center">
-  <img src="upstream/theater-1.10.0/logo.png" alt="Stremio" width="110" />
+  <img src="docs/brand/hero.png" alt="Stremio for Hisense and VIDAA TVs" width="800">
 </p>
 
-<h1 align="center">Stremio for Hisense Laser Projectors &amp; VIDAA TVs</h1>
-
 <p align="center">
-  <strong>Turn any Hisense Laser Projector (PX3-Pro, C2, M2 Pro, PX1-Pro) or VIDAA Smart TV into a full 4K Dolby Vision &amp; HDR Stremio home theater — in 30 seconds.</strong>
+  <strong>Turn a Hisense laser projector (PX3-Pro, C2, M2 Pro, PX1-Pro) or any VIDAA smart TV into a full 4K Dolby Vision and HDR Stremio home theater in 30 seconds.</strong>
 </p>
 
 <p align="center">
@@ -18,16 +16,14 @@
 </p>
 
 <p align="center">
-  <a href="#-30-second-quick-start">⚡ 30-Second Quick Start</a> &nbsp;&bull;&nbsp;
-  <a href="#-official-store-app-vs-this-build">🔥 Why Switch?</a> &nbsp;&bull;&nbsp;
-  <a href="#-4-ways-to-install">🎯 Install Options</a> &nbsp;&bull;&nbsp;
-  <a href="#-what-this-build-solves">✨ Features</a> &nbsp;&bull;&nbsp;
-  <a href="#-4k-codec--dolby-vision-matrix">🎬 4K &amp; DV Matrix</a> &nbsp;&bull;&nbsp;
-  <a href="#-remote-control-cheatsheet">🎮 Remote Keys</a> &nbsp;&bull;&nbsp;
-  <a href="#-troubleshooting">❓ Troubleshooting</a>
+  <a href="#-30-second-quick-start">Quick start</a> •
+  <a href="#-official-store-app-vs-this-build">Why switch</a> •
+  <a href="#-4-ways-to-install">Install</a> •
+  <a href="#-what-this-build-solves">Features</a> •
+  <a href="#-4k-codec--dolby-vision-matrix">4K and Dolby Vision</a> •
+  <a href="#-remote-control-cheatsheet">Remote keys</a> •
+  <a href="#-troubleshooting">Troubleshooting</a>
 </p>
-
----
 
 ## ⚡ 30-Second Quick Start
 
