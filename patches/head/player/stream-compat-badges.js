@@ -1,17 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-// Opt-In Stream Compatibility Badges (Settings > Vidaa TV)
-// ═══════════════════════════════════════════════════════════════════════
-// Strictly opt-in (defaultValue: false) so default UI and behavior on
-// David's Hisense projector remain 100% untouched unless enabled in
-// Settings > Vidaa TV > Stream Compatibility Badges.
-//
-// Classifies stream descriptions for Hisense VIDAA hardware quirks:
-//   • AV1 streams (unsupported on most MT9602/MT9618 VIDAA hardware without
-//     a streaming server transcode)
-//   • MP4 Dolby Vision streams (Profile 5/8 in MP4 often triggers black
-//     screen or green/purple tint on VIDAA browsers; MKV is preferred)
-//   • Heavy 4K remuxes (> 25 GB) without a local streaming server
-//   • MKV HDR / Dolby Vision and Direct Play H.264/HEVC streams
+// Stream Compatibility & Language Badges (VF / MULTI / VO)
 // ═══════════════════════════════════════════════════════════════════════
 (function() {
     'use strict';
@@ -21,12 +9,35 @@
     var LS_KEY = 'stremio_stream_compat_badges';
     var log = RT.logger('compat-badges');
 
-    function isEnabled() {
+    function isCompatEnabled() {
         return RT.store.getBool(LS_KEY, false);
     }
 
     function isServerOnline() {
         return !!(window.__SERVER_HEALTH__ && window.__SERVER_HEALTH__.status === 'online');
+    }
+
+    function detectLanguage(rawText) {
+        var lower = String(rawText || '').toLowerCase();
+        if (!lower) return null;
+
+        // MULTI (French + English / other languages)
+        if (/\bmulti\b|\bmultis\b|multi-audio|\bfr-en\b|\ben-fr\b|multi\s*\(/.test(lower)) {
+            return { code: 'lang-multi', label: '🇫🇷 MULTI', color: '#10b981', bg: 'rgba(16, 185, 129, 0.25)', border: '#10b981' };
+        }
+
+        // French exclusive (VFF, TRUEFRENCH, VFQ, VF, FRENCH)
+        if (/\b(truefrench|vff|vfq|french|vf)\b|\bfrançais\b|\bfrancais\b/.test(lower)) {
+            return { code: 'lang-vf', label: '🇫🇷 VF', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.25)', border: '#3b82f6' };
+        }
+
+        // VOSTFR / French subtitles
+        if (/\b(vostfr|subfrench)\b/.test(lower)) {
+            return { code: 'lang-vostfr', label: '💬 VOSTFR', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.25)', border: '#f59e0b' };
+        }
+
+        // Default: Original Version (mostly English)
+        return { code: 'lang-vo', label: '🇬🇧 VO', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.15)', border: '#64748b' };
     }
 
     function classifyStreamCompatibility(rawText, hasServer) {
@@ -69,20 +80,16 @@
 
     window.__classifyStreamCompatibility = classifyStreamCompatibility;
 
-    function clearBadges() {
-        var existing = document.querySelectorAll('.vidaa-compat-badge');
-        for (var i = 0; i < existing.length; i++) {
-            if (existing[i].parentNode) existing[i].parentNode.removeChild(existing[i]);
-        }
-    }
-
     function annotateStreamCards() {
-        if (!isEnabled()) return;
         var hash = window.location.hash || '';
-        if (hash.indexOf('#/detail/') !== 0) return;
+        if (hash.indexOf('#/detail') !== 0 && hash.indexOf('#/metadetails') !== 0) return;
 
         var cards = document.querySelectorAll('[class*="stream-"]');
+        if (!cards || cards.length === 0) return;
+
+        var showCompat = isCompatEnabled();
         var serverUp = isServerOnline();
+
         for (var i = 0; i < cards.length; i++) {
             var card = cards[i];
             var details = card.querySelector('[class*="details-"]');
@@ -92,30 +99,52 @@
             if (!descEl) continue;
 
             var combined = ((nameEl ? nameEl.textContent : '') + ' ' + (descEl.textContent || '')).replace(/^\s+|\s+$/g, '');
-            var verdict = classifyStreamCompatibility(combined, serverUp);
-            var badge = details.querySelector('.vidaa-compat-badge');
-            if (!verdict) {
-                if (badge && badge.parentNode) badge.parentNode.removeChild(badge);
-                continue;
+
+            // 1. Language Badge (Always active)
+            var lang = detectLanguage(combined);
+            if (lang) {
+                var langBadge = details.querySelector('.vidaa-lang-badge');
+                if (!langBadge) {
+                    langBadge = document.createElement('span');
+                    langBadge.className = 'vidaa-lang-badge';
+                    langBadge.style.cssText = 'display:inline-block;font-size:0.95rem;font-weight:700;line-height:1.2;padding:2px 8px;border-radius:4px;margin-bottom:4px;white-space:nowrap;letter-spacing:0.02em;';
+                    details.insertBefore(langBadge, details.firstChild);
+                }
+                if (langBadge.getAttribute('data-code') !== lang.code) {
+                    langBadge.setAttribute('data-code', lang.code);
+                    langBadge.textContent = lang.label;
+                    langBadge.style.color = lang.color;
+                    langBadge.style.backgroundColor = lang.bg;
+                    langBadge.style.border = '1px solid ' + lang.border;
+                }
             }
-            if (!badge) {
-                badge = document.createElement('div');
-                badge.className = 'vidaa-compat-badge';
-                badge.style.cssText = 'font-size:1.05rem;font-weight:600;line-height:1.2;margin-top:0.15rem;white-space:nowrap;';
-                details.appendChild(badge);
-            }
-            if (badge.getAttribute('data-code') !== verdict.code) {
-                badge.setAttribute('data-code', verdict.code);
-                badge.textContent = verdict.label;
-                badge.style.color = verdict.color;
+
+            // 2. Codec / Compat Badge (Opt-in via settings)
+            if (showCompat) {
+                var verdict = classifyStreamCompatibility(combined, serverUp);
+                var compatBadge = details.querySelector('.vidaa-compat-badge');
+                if (!verdict) {
+                    if (compatBadge && compatBadge.parentNode) compatBadge.parentNode.removeChild(compatBadge);
+                } else {
+                    if (!compatBadge) {
+                        compatBadge = document.createElement('div');
+                        compatBadge.className = 'vidaa-compat-badge';
+                        compatBadge.style.cssText = 'font-size:1.05rem;font-weight:600;line-height:1.2;margin-top:0.15rem;white-space:nowrap;';
+                        details.appendChild(compatBadge);
+                    }
+                    if (compatBadge.getAttribute('data-code') !== verdict.code) {
+                        compatBadge.setAttribute('data-code', verdict.code);
+                        compatBadge.textContent = verdict.label;
+                        compatBadge.style.color = verdict.color;
+                    }
+                }
             }
         }
     }
 
     RT.poll(function() {
-        if (!isEnabled()) return;
         annotateStreamCards();
-    }, 1000, { route: 'nonplayer', quiet: true });
+    }, 600, { route: 'nonplayer', quiet: true });
 
     if (window.__registerCommunityToggle) {
         window.__registerCommunityToggle({
@@ -127,7 +156,12 @@
             onToggle: function(nowEnabled) {
                 log('Stream compatibility badges toggled:', nowEnabled ? 'ON' : 'OFF');
                 if (nowEnabled) annotateStreamCards();
-                else clearBadges();
+                else {
+                    var existing = document.querySelectorAll('.vidaa-compat-badge');
+                    for (var i = 0; i < existing.length; i++) {
+                        if (existing[i].parentNode) existing[i].parentNode.removeChild(existing[i]);
+                    }
+                }
             }
         });
     }
