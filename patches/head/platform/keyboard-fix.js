@@ -1,7 +1,7 @@
-    // VIDAA keyboard fix v5 — intercept programmatic input.value changes
+    // VIDAA keyboard fix — intercept programmatic input.value changes
     // The VIDAA system keyboard sets input.value directly without firing DOM events.
-    // This script: (1) overrides the value setter to fire synthetic events,
-    // (2) polls as fallback, (3) directly updates URL hash as nuclear option.
+    // This script overrides the value setter to fire synthetic input events so that
+    // input value changes are tracked without prematurely triggering search or closing the OSK.
     (function() {
         window.__STREMIO_PATCH_VERSION__ = 5;
 
@@ -29,37 +29,4 @@
                 });
             }
         } catch(e) {}
-
-        // Layer 2: Polling fallback (250ms — balanced for TV CPU).
-        // Scheduler-owned since P1.4; the tick early-returns off #/search,
-        // so no route option is needed (and it must never fire during
-        // playback — quiet default is fine).
-        var RTk = window.__vidaaRuntime;
-        var _prev = '';
-        RTk.poll(function() {
-            try {
-                var hash = window.location.hash || '';
-                if (hash.indexOf('#/search') !== 0) { _prev = ''; return; }
-                var el = document.querySelector('input[type="text"]')
-                      || document.querySelector('input[placeholder]')
-                      || document.querySelector('input');
-                if (!el) return;
-                var v = el.value || '';
-                if (v === _prev) return;
-                _prev = v;
-
-                try {
-                    el.dispatchEvent(new Event('input', { bubbles: true }));
-                    el.dispatchEvent(new Event('change', { bubbles: true }));
-                } catch(e) {}
-
-                // Layer 3: Nuclear option — directly update URL hash
-                if (v.length > 0) {
-                    var encoded = encodeURIComponent(v);
-                    if (hash.indexOf('query=' + encoded) === -1) {
-                        window.location.hash = '#/search?query=' + encoded;
-                    }
-                }
-            } catch(e) {}
-        }, 250);
     })();
