@@ -70,6 +70,8 @@
     // Mode 2: 💬 VOSTFR (Audio VO/Original + Sous-titres Français)
     // ═══════════════════════════════════════════════════════════════════════
     var currentPresetMode = null; // 'VF' or 'VOSTFR'
+    var lastVoAudioId = null;
+    var lastSeenStreamUrl = null;
 
     function isFrenchAudioTrack(t) {
         if (!t) return false;
@@ -81,15 +83,10 @@
         return false;
     }
 
-    function isVOAudioTrack(t) {
-        if (!t) return false;
-        return !isFrenchAudioTrack(t);
-    }
-
     function isFrenchSubTrack(t) {
         if (!t) return false;
         var lang = (t.lang || t.language || '').toLowerCase().trim();
-        var label = (t.label || t.name || t.title || '').toLowerCase().trim();
+        var label = (t.label || t.name || t.title || t.group || '').toLowerCase().trim();
         if (lang === 'fr' || lang === 'fre' || lang === 'fra') return true;
         if (/\b(fr|fre|fra|french|francais|français|vostfr)\b/i.test(label)) return true;
         if (label.indexOf('french') !== -1 || label.indexOf('français') !== -1 || label.indexOf('francais') !== -1) return true;
@@ -97,6 +94,7 @@
     }
 
     function isForcedSub(t) {
+        if (!t) return false;
         var label = (t.label || t.name || t.title || '').toLowerCase();
         return label.indexOf('force') !== -1 || label.indexOf('forcé') !== -1;
     }
@@ -115,24 +113,41 @@
 
     function toggleLanguagePreset() {
         var ctrl = window.__STREMIO_PLAYER_CONTROLLER__;
-        var video = document.querySelector('video');
-        if (!video) return;
+        var model = window.__STREMIO_PLAYER_MODEL__;
+        if (!ctrl || typeof ctrl.state !== 'function') return;
 
-        var state = (ctrl && typeof ctrl.state === 'function') ? ctrl.state() : {};
+        var state = ctrl.state() || {};
         var audioTracks = state.audioTracks || [];
         var subTracks = state.subtitlesTracks || [];
         var extraSubTracks = state.extraSubtitlesTracks || [];
-
-        // Check currently active audio to decide next preset if currentPresetMode is unset
         var curAudioId = state.selectedAudioTrackId;
-        var curTrack = null;
-        for (var i = 0; i < audioTracks.length; i++) {
-            if (audioTracks[i].id === curAudioId) { curTrack = audioTracks[i]; break; }
+
+        // Reset tracking on a new video
+        var streamUrl = (state.stream && state.stream.url) || window.location.hash || '';
+        if (streamUrl !== lastSeenStreamUrl) {
+            lastSeenStreamUrl = streamUrl;
+            currentPresetMode = null;
+            lastVoAudioId = null;
         }
 
-        var curIsFrench = curTrack ? isFrenchAudioTrack(curTrack) : false;
-        var targetMode;
+        // Identify currently active audio track
+        var curAudio = null;
+        for (var i = 0; i < audioTracks.length; i++) {
+            if (audioTracks[i].id === curAudioId) { curAudio = audioTracks[i]; break; }
+        }
+        if (!curAudio && audioTracks.length > 0) {
+            curAudio = audioTracks[0];
+        }
 
+        var curIsFrench = curAudio ? isFrenchAudioTrack(curAudio) : false;
+
+        // Remember VO track when currently playing VO
+        if (curAudio && !curIsFrench) {
+            lastVoAudioId = curAudio.id;
+        }
+
+        // Determine target mode (toggle back and forth)
+        var targetMode;
         if (currentPresetMode === 'VF') {
             targetMode = 'VOSTFR';
         } else if (currentPresetMode === 'VOSTFR') {
@@ -150,113 +165,130 @@
             }
 
             if (frAudio) {
-                if (ctrl && typeof ctrl.selectAudioTrack === 'function') {
-                    ctrl.selectAudioTrack(frAudio.id);
+                ctrl.selectAudioTrack(frAudio.id);
+                if (model && typeof model.updateStream === 'function') {
+                    try { model.updateStream({ audioTrack: { id: frAudio.id } }); } catch(_) {}
                 }
-                if (ctrl && typeof ctrl.disableSubtitlesTracks === 'function') {
-                    ctrl.disableSubtitlesTracks();
+
+                // Turn off all subtitles
+                ctrl.disableSubtitlesTracks();
+                if (model && typeof model.updateStream === 'function') {
+                    try { model.updateStream({ subtitleTrack: null }); } catch(_) {}
                 }
-                // Direct DOM sync
-                try {
-                    if (video.audioTracks && video.audioTracks.length) {
-                        for (var da = 0; da < video.audioTracks.length; da++) {
-                            var dat = video.audioTracks[da];
-                            dat.enabled = isFrenchAudioTrack(dat);
-                        }
-                    }
-                    if (video.textTracks && video.textTracks.length) {
-                        for (var ds = 0; ds < video.textTracks.length; ds++) {
-                            video.textTracks[ds].mode = 'disabled';
-                        }
-                    }
-                } catch(e) {}
 
                 currentPresetMode = 'VF';
                 showPresetToast('🇫🇷 VF (Français)', 'Audio : Français • Sous-titres : Désactivés', 'rgba(16, 185, 129, 0.94)');
-                log('Preset switched to VF');
+                log('Switched to VF:', frAudio.id, frAudio.label);
             } else {
-                showPresetToast('⚠️ VF Indisponible', 'Aucune piste audio française trouvée sur ce fichier', 'rgba(239, 68, 68, 0.94)');
+                showPresetToast('⚠️ VF Indisponible', 'Aucune piste audio française sur ce fichier', 'rgba(239, 68, 68, 0.94)');
             }
         } else {
             // ── Preset 2: VOSTFR (VO Audio + French Subtitles) ─────────────
-            // Pick best VO track: Japanese for anime, English for others, or any non-French
             var voAudio = null;
-            for (var j = 0; j < audioTracks.length; j++) {
-                var at = audioTracks[j];
-                var l = (at.lang || '').toLowerCase();
-                if (l === 'ja' || l === 'jpn') { voAudio = at; break; }
+
+            // A) Use the VO audio track we saved when previously in VO mode
+            if (lastVoAudioId) {
+                for (var k = 0; k < audioTracks.length; k++) {
+                    if (audioTracks[k].id === lastVoAudioId && !isFrenchAudioTrack(audioTracks[k])) {
+                        voAudio = audioTracks[k];
+                        break;
+                    }
+                }
             }
+
+            // B) Look for Japanese (for animes)
+            if (!voAudio) {
+                for (var j = 0; j < audioTracks.length; j++) {
+                    var lJ = (audioTracks[j].lang || '').toLowerCase();
+                    var nJ = (audioTracks[j].label || '').toLowerCase();
+                    if (lJ === 'ja' || lJ === 'jpn' || nJ.indexOf('japan') !== -1 || nJ.indexOf('japonais') !== -1) {
+                        voAudio = audioTracks[j];
+                        break;
+                    }
+                }
+            }
+
+            // C) Look for English (for western movies/series)
             if (!voAudio) {
                 for (var e = 0; e < audioTracks.length; e++) {
-                    var at2 = audioTracks[e];
-                    var l2 = (at2.lang || '').toLowerCase();
-                    if (l2 === 'en' || l2 === 'eng') { voAudio = at2; break; }
+                    var lE = (audioTracks[e].lang || '').toLowerCase();
+                    var nE = (audioTracks[e].label || '').toLowerCase();
+                    if (lE === 'en' || lE === 'eng' || nE.indexOf('english') !== -1 || nE.indexOf('anglais') !== -1) {
+                        voAudio = audioTracks[e];
+                        break;
+                    }
                 }
             }
+
+            // D) Fallback to any non-French track
             if (!voAudio) {
                 for (var v = 0; v < audioTracks.length; v++) {
-                    if (isVOAudioTrack(audioTracks[v])) { voAudio = audioTracks[v]; break; }
+                    if (!isFrenchAudioTrack(audioTracks[v])) {
+                        voAudio = audioTracks[v];
+                        break;
+                    }
                 }
+            }
+
+            // E) Fallback to track 0 if nothing else matches
+            if (!voAudio && audioTracks.length > 0) {
+                voAudio = audioTracks[0];
             }
 
             var audioLabel = 'VO';
             if (voAudio) {
-                if (ctrl && typeof ctrl.selectAudioTrack === 'function') {
-                    ctrl.selectAudioTrack(voAudio.id);
+                ctrl.selectAudioTrack(voAudio.id);
+                if (model && typeof model.updateStream === 'function') {
+                    try { model.updateStream({ audioTrack: { id: voAudio.id } }); } catch(_) {}
                 }
-                try {
-                    if (video.audioTracks && video.audioTracks.length) {
-                        for (var dva = 0; dva < video.audioTracks.length; dva++) {
-                            var dvat = video.audioTracks[dva];
-                            dvat.enabled = (dvat.id === voAudio.id || dvat === voAudio);
-                        }
-                    }
-                } catch(err) {}
                 audioLabel = voAudio.label || voAudio.lang || 'VO';
             }
 
-            // Find French subtitle (prefer embedded complete over forced, fallback to extra/addon)
+            // Find French Subtitles (embedded or extra/addons)
             var frSubs = [];
             for (var s = 0; s < subTracks.length; s++) {
-                if (isFrenchSubTrack(subTracks[s])) frSubs.push({ track: subTracks[s], extra: false });
+                if (isFrenchSubTrack(subTracks[s])) {
+                    frSubs.push({ track: subTracks[s], extra: false });
+                }
             }
             for (var x = 0; x < extraSubTracks.length; x++) {
-                if (isFrenchSubTrack(extraSubTracks[x])) frSubs.push({ track: extraSubTracks[x], extra: true });
+                if (isFrenchSubTrack(extraSubTracks[x])) {
+                    frSubs.push({ track: extraSubTracks[x], extra: true });
+                }
             }
 
-            // Prefer non-forced
+            // Prioritize non-forced French subtitles
             var selectedSub = null;
             for (var fs = 0; fs < frSubs.length; fs++) {
-                if (!isForcedSub(frSubs[fs].track)) { selectedSub = frSubs[fs]; break; }
+                if (!isForcedSub(frSubs[fs].track)) {
+                    selectedSub = frSubs[fs];
+                    break;
+                }
             }
-            if (!selectedSub && frSubs.length) {
+            if (!selectedSub && frSubs.length > 0) {
                 selectedSub = frSubs[0];
             }
 
             if (selectedSub) {
-                if (ctrl) {
-                    if (selectedSub.extra && typeof ctrl.selectExtraSubtitlesTrack === 'function') {
-                        ctrl.selectExtraSubtitlesTrack(selectedSub.track.id);
-                    } else if (typeof ctrl.selectSubtitlesTrack === 'function') {
-                        ctrl.selectSubtitlesTrack(selectedSub.track.id);
+                if (selectedSub.extra) {
+                    ctrl.selectExtraSubtitlesTrack(selectedSub.track.id);
+                    if (model && typeof model.updateStream === 'function') {
+                        try { model.updateStream({ subtitleTrack: { id: selectedSub.track.id, embedded: false } }); } catch(_) {}
+                    }
+                } else {
+                    ctrl.selectSubtitlesTrack(selectedSub.track.id);
+                    if (model && typeof model.updateStream === 'function') {
+                        try { model.updateStream({ subtitleTrack: { id: selectedSub.track.id, embedded: true } }); } catch(_) {}
                     }
                 }
-                try {
-                    if (video.textTracks && video.textTracks.length) {
-                        for (var dts = 0; dts < video.textTracks.length; dts++) {
-                            var dtst = video.textTracks[dts];
-                            dtst.mode = isFrenchSubTrack(dtst) ? 'showing' : 'disabled';
-                        }
-                    }
-                } catch(err) {}
 
                 currentPresetMode = 'VOSTFR';
                 showPresetToast('💬 VOSTFR', 'Audio : ' + audioLabel + ' • Sous-titres : Français', 'rgba(59, 130, 246, 0.94)');
-                log('Preset switched to VOSTFR with subs');
+                log('Switched to VOSTFR with subs:', selectedSub.track.id);
             } else {
                 currentPresetMode = 'VOSTFR';
                 showPresetToast('💬 Audio VO activé', 'Audio : ' + audioLabel + ' • ⚠️ Aucun sous-titre FR trouvé', 'rgba(245, 158, 11, 0.94)');
-                log('Preset switched to VO, but no French subtitles found');
+                log('Switched to VO, no French subs found');
             }
         }
     }

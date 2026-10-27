@@ -8,14 +8,14 @@
       "replace": "(0,r.Yr)(n,(()=>window.__STREMIO_ERROR_ENHANCER__?window.__STREMIO_ERROR_ENHANCER__(e()):e().message),null),(0,o.gb)((()=>(0,r.s7)(n,re.error)))"
     },
     {
-      "note": "Expose player video controller on window.__STREMIO_PLAYER_CONTROLLER__ for remote shortcuts and auto-language presets.",
+      "note": "Expose player video controller on window.__STREMIO_PLAYER_CONTROLLER__ and player model on window.__STREMIO_PLAYER_MODEL__.",
       "find": ",C=v(),[P,I,E]=",
-      "replace": ",C=window.__STREMIO_PLAYER_CONTROLLER__=v(),[P,I,E]="
+      "replace": ",C=window.__STREMIO_PLAYER_CONTROLLER__=v(),window.__STREMIO_PLAYER_MODEL__=T,[P,I,E]="
     },
     {
-      "note": "Cleanup player video controller on unmount.",
+      "note": "Cleanup player video controller and model on unmount.",
       "find": "(0,o.Ki)((()=>{var e;v(),null===(e=n())||void 0===e||e.destroy(),r(null)}))",
-      "replace": "(0,o.Ki)((()=>{var e;try{window.__STREMIO_PLAYER_CONTROLLER__=null}catch(_){}v(),null===(e=n())||void 0===e||e.destroy(),r(null)}))"
+      "replace": "(0,o.Ki)((()=>{var e;try{window.__STREMIO_PLAYER_CONTROLLER__=null;window.__STREMIO_PLAYER_MODEL__=null}catch(_){}v(),null===(e=n())||void 0===e||e.destroy(),r(null)}))"
     }
   ],
   "fixTrailingNewline": "ensure"
