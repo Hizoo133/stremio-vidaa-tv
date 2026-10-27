@@ -35,7 +35,8 @@
     var CODES = {
         red: 403,
         green: 404,
-        yellow: 405,
+        yellow: [405, 118],
+        orange: [405, 118],
         blue: 406,
         info: 457,
         i: 73,
