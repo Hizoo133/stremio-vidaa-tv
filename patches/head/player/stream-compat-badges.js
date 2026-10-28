@@ -21,6 +21,11 @@
         var lower = String(rawText || '').toLowerCase();
         if (!lower) return null;
 
+        // Uncached Debrid download links (put to bottom, distinct warning badge)
+        if (/(\[(ad|rd|pm)\s*download\]|download\s*to\s*debrid|\buncached\b)/.test(lower)) {
+            return { code: 'lang-uncached', label: '⏳ TÉLÉCHARGEMENT ALLDEBRID', color: '#f87171', bg: 'rgba(239, 68, 68, 0.25)', border: '#ef4444' };
+        }
+
         // MULTI (French + English / other languages)
         if (/\bmulti\b|\bmultis\b|multi-audio|\bfr-en\b|\ben-fr\b|multi\s*\(/.test(lower)) {
             return { code: 'lang-multi', label: '🇫🇷 MULTI', color: '#10b981', bg: 'rgba(16, 185, 129, 0.25)', border: '#10b981' };
