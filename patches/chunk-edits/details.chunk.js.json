@@ -1,16 +1,11 @@
 {
   "chunk": "details.chunk.js",
-  "description": "Honest external-stream handling and MULTI/VF stream prioritization for VIDAA TV.",
+  "description": "Honest external-stream handling for VIDAA TV.",
   "ops": [
     {
       "note": "External stream press: Vidaa joins the confirm-dialog branch instead of the dead-end dialog (isTitan/isNetTV keep the dead-end).",
       "find": "r?n.isTitan||n.isNetTV||n.isVidaa?c():o():i.player&&t.navigate(i.player)",
       "replace": "r?n.isTitan||n.isNetTV?c():o():i.player&&t.navigate(i.player)"
-    },
-    {
-      "note": "Stream filtering & sorting: prioritize MULTI (score 3) and VF/French (score 2) streams at the top, and demote uncached [AD download] links to the bottom (score -10).",
-      "find": ".filter((({externalUrl:e,tizenUrl:n,webosUrl:t})=>!e||d.isWeb||d.isVidaa||d.isTitan||d.isNetTV||d.isTizen&&n||d.isWebOS&&t)).slice(0,(null!==(n=x())&&void 0!==n?n:0)+5)",
-      "replace": ".filter((({externalUrl:e,tizenUrl:n,webosUrl:t})=>!e||d.isWeb||d.isVidaa||d.isTitan||d.isNetTV||d.isTizen&&n||d.isWebOS&&t)).sort((function(_a,_b){var _f=function(s){var l=((s.name||\"\")+\" \"+(s.description||\"\")+\" \"+(s.title||\"\")).toLowerCase();if(/(\\[(ad|rd|pm)\\s*download\\]|download\\s*to\\s*debrid|\\buncached\\b)/.test(l))return -10;return /\\bmulti\\b|\\bmultis\\b|multi-audio|\\bfr-en\\b|\\ben-fr\\b|multi\\s*\\(/.test(l)?3:/\\b(truefrench|vff|vfq|french|vf)\\b|\\bfrançais\\b|\\bfrancais\\b/.test(l)?2:/\\b(vostfr|subfrench)\\b/.test(l)?1:0};return _f(_b)-_f(_a)})).slice(0,(null!==(n=x())&&void 0!==n?n:0)+5)"
     }
   ],
   "fixTrailingNewline": "ensure"
