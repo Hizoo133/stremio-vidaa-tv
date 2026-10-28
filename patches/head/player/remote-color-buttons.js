@@ -41,28 +41,23 @@
         setTimeout(function() { if (healthOverlay) { healthOverlay.remove(); healthOverlay = null; } }, 10000);
     });
 
-    // Blue (406) — force transcode current stream (reloads player).
-    // Only useful if a streaming server is configured. Do not require the
-    // cached health flag here; health checks are intentionally quiet in the
-    // player and can be stale even when the server is reachable.
+    // ═══════════════════════════════════════════════════════════════════════
+    // Blue (406) — Skip Intro / Opening (+85 secondes)
+    // ═══════════════════════════════════════════════════════════════════════
     window.__vidaaKeys.on('blue', function() {
-        var ph = window.location.hash || '';
-        var serverReady = RT.serverConfigured();
-        if (!serverReady) {
-            showToast('Force transcode needs a streaming server.\nCheck Settings > Server.', 'rgba(180,60,60,0.92)', 3500);
-            return;
-        }
-        window.__FORCE_TRANSCODE__ = true;
-        log('Force transcode enabled, reloading stream');
-        showToast('Forcing transcode...', null, 1500);
-        try {
-            window.location.hash = '#/home';
-            setTimeout(function() { window.location.hash = ph; }, 200);
-        } catch(err) {
-            log.error('Force transcode reload failed:', err.message);
-            showToast('Could not reload stream', 'rgba(180,60,60,0.92)', 2500);
-        }
-    }, { route: 'player' });
+        var vid = document.querySelector('video');
+        if (!vid) return;
+        var newTime = Math.min(vid.currentTime + 85, vid.duration || Infinity);
+        vid.currentTime = newTime;
+        RT.toast('⏩ Skip Intro (+85s)', {
+            at: 'center',
+            bg: 'rgba(37, 99, 235, 0.94)',
+            ms: 1800,
+            id: 'skip-intro-toast',
+            extra: 'border:1px solid rgba(255,255,255,0.2);box-shadow:0 10px 25px rgba(0,0,0,0.6);backdrop-filter:blur(8px);padding:14px 28px;border-radius:12px;font-size:1.25rem;font-weight:700;'
+        });
+        log('Skip intro: sought forward 85s to', newTime);
+    }, { route: 'player', priority: 600, suppress: true });
 
     // ═══════════════════════════════════════════════════════════════════════
     // Orange / Yellow (405) — Instant Language Preset Toggle
