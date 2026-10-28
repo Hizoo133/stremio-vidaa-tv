@@ -127,9 +127,7 @@
     };
 
     function cardEnabled() {
-        // Default ON: this is the user's lifeline when a stream won't play. Still
-        // toggleable, and only ever appears on the explicit no-escape stall path.
-        return RT.store.getBool(CARD_TOGGLE_KEY, true);
+        return RT.store.getBool(CARD_TOGGLE_KEY, false);
     }
     window.__heavyChoiceCardEnabled = cardEnabled;
 
@@ -143,6 +141,7 @@
 
     // ── (A) The non-blocking choice card. ──────────────────────────────────
     window.__showHeavyStreamChoiceCard = function() {
+        if (!cardEnabled()) return;
         if (document.getElementById('dv-heavy-choice')) return;
 
         // Capture the player hash NOW (when the stall is detected) so the
@@ -292,9 +291,9 @@
             id: 'heavy-stream-choice-card-toggle',
             type: 'toggle',
             label: 'Heavy-Stream Help Card',
-            description: 'When a stream is too heavy for the TV browser and nothing else works, show a small dismissible card offering to find a lighter version, set up a 4K helper server, or keep trying. Never blocks or skips the stream. ON by default.',
+            description: 'When a stream is too heavy for the TV browser and nothing else works, show a small dismissible card offering to find a lighter version, set up a 4K helper server, or keep trying. Never blocks or skips the stream. OFF by default.',
             lsKey: CARD_TOGGLE_KEY,
-            defaultValue: true
+            defaultValue: false
         });
         window.__registerVidaaSettingsItem({
             id: 'helper-server-setup-item',

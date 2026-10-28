@@ -28,8 +28,10 @@
     var log = RT.logger('auto-native');
     var LS_KEY_ALL = 'stremio_auto_native_player';
     var LS_KEY_MKV = 'stremio_auto_native_player_mkv';
-    function modeAll() { return RT.store.getBool(LS_KEY_ALL, false); }
-    function modeMkvOnly() { return RT.store.getBool(LS_KEY_MKV, false); }
+    // Native player handoff is non-functional on VIDAA TV firmware (does not background Opera browser).
+    // Disabling prevents premature video pauses that trigger false stall errors.
+    function modeAll() { return false; }
+    function modeMkvOnly() { return false; }
 
     function hasNative() { return !!window.__hasNativePlayer && window.__hasNativePlayer(); }
 

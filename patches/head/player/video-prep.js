@@ -80,22 +80,14 @@
             priority: 300,
             type: 'early',
             when: function() {
-                return RT.store.getBool('stremio_auto_native_player', false)
-                    || RT.store.getBool('stremio_auto_native_player_mkv', false);
+                return false; // Native handoff is non-functional on VIDAA; never pause playback
             },
             act: function(video, ep) {
-                if (ep.invocation !== 1) return false;
-                if (!window.__handoffAndRecover) return false;
-                log('2+ early stalls, handing off to native player');
-                try { video.pause(); } catch(e) {}
-                window.__handoffAndRecover(video, video.currentSrc || video.src);
-                return true;
+                return false;
             }
         });
 
-        // Inform: the guidance UI (no auto action left). The heavy-choice
-        // card when the stream analysis says "too heavy"; the honest note
-        // when there is no server either.
+        // Inform: the guidance UI (opt-in only for extreme >4K streams, never on standard MKV/4K).
         RT.stall.register({
             id: 'prep-guidance',
             phase: 'inform',
@@ -104,10 +96,8 @@
             act: function(video) {
                 var noServer = !RT.serverConfigured();
                 var si = window.__STREAM_INFO__ || {};
-                var src = (video.currentSrc || video.src || '').toLowerCase();
                 var tooHeavy = si.oversize === true
-                    || (si.width && si.width >= 3840) || (si.height && si.height >= 2160)
-                    || src.indexOf('.mkv') !== -1;
+                    || (si.width && si.width > 4096) || (si.height && si.height > 2160);
                 if (tooHeavy && typeof window.__heavyChoiceCardEnabled === 'function' && window.__heavyChoiceCardEnabled()
                     && typeof window.__showHeavyStreamChoiceCard === 'function') {
                     window.__showHeavyStreamChoiceCard();
@@ -115,8 +105,6 @@
                 }
                 if (noServer && typeof window.__honestStallEnabled === 'function' && window.__honestStallEnabled()
                     && typeof window.__showHonestStallMessage === 'function') {
-                    // tooHeavy drives the copy — a stalling 1080p MP4 is not
-                    // a 4K problem (P0.13).
                     window.__showHonestStallMessage({ tooHeavy: tooHeavy });
                     return true;
                 }

@@ -24,6 +24,7 @@
     // matches the actual failure mode — a stalling 1080p MP4 must not be
     // told it's a 4K problem (P0.13).
     window.__showHonestStallMessage = function(opts) {
+        if (!enabled()) return;
         if (document.getElementById('dv-honest-stall')) return;
         var now = Date.now();
         if (now - lastShownAt < 15000) return; // throttle

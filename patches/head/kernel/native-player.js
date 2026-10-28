@@ -186,30 +186,9 @@
                 if (p && typeof p.catch === 'function') p.catch(function() {});
             }
         } catch(e) {}
-        if (opts.silent) return;
-        // Throttle toasts so repeated stalls don't spam.
-        var now = Date.now();
-        if (now - lastFailToastAt < 6000) return;
-        lastFailToastAt = now;
+        // Silent recovery: never interrupt user with "too heavy" toast
         var existing = document.getElementById('__handoff-fail-toast');
         if (existing) existing.remove();
-        var toast = document.createElement('div');
-        toast.id = '__handoff-fail-toast';
-        toast.className = 'dv-honest-toast';
-        toast.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:rgba(20,20,20,0.95);color:#fff;padding:12px 18px;border-radius:10px;font-size:14px;z-index:99999;font-family:PlusJakartaSans,sans-serif;max-width:460px;text-align:center;line-height:1.4;display:flex;flex-direction:column;gap:8px;';
-        var msg = document.createElement('div');
-        msg.textContent = 'The TV’s built-in player didn’t open — resuming here. This stream may be too heavy for the TV browser; try a 1080p or MP4 version of this title.';
-        toast.appendChild(msg);
-        var btn = document.createElement('button');
-        btn.textContent = 'OK';
-        btn.style.cssText = 'background:rgba(255,255,255,0.14);color:#fff;border:none;border-radius:8px;padding:6px 16px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;align-self:center;';
-        btn.setAttribute('tabindex', '0');
-        btn.onfocus = function() { this.style.outline = '2px solid #fff'; };
-        btn.onblur = function() { this.style.outline = 'none'; };
-        btn.onclick = function() { toast.remove(); };
-        toast.appendChild(btn);
-        document.body.appendChild(toast);
-        setTimeout(function() { if (toast.parentNode) toast.remove(); }, 9000);
     };
 
     // Verified-launch wrapper for the call sites that share the

@@ -23,26 +23,26 @@
 
         // Uncached Debrid download links (put to bottom, distinct warning badge)
         if (/(\[(ad|rd|pm)\s*download\]|download\s*to\s*debrid|\buncached\b)/.test(lower)) {
-            return { code: 'lang-uncached', label: '⏳ TÉLÉCHARGEMENT ALLDEBRID', color: '#f87171', bg: 'rgba(239, 68, 68, 0.25)', border: '#ef4444' };
+            return { code: 'lang-uncached', label: '⏳ TÉLÉCHARGEMENT ALLDEBRID', color: '#f87171', bg: 'rgba(15, 23, 42, 0.85)', border: 'rgba(239, 68, 68, 0.45)' };
         }
 
         // MULTI (French + English / other languages)
         if (/\bmulti\b|\bmultis\b|multi-audio|\bfr-en\b|\ben-fr\b|multi\s*\(/.test(lower)) {
-            return { code: 'lang-multi', label: '🇫🇷 MULTI', color: '#10b981', bg: 'rgba(16, 185, 129, 0.25)', border: '#10b981' };
+            return { code: 'lang-multi', label: '🇫🇷 MULTI', color: '#34d399', bg: 'rgba(15, 23, 42, 0.85)', border: 'rgba(52, 211, 153, 0.45)' };
         }
 
         // French exclusive (VFF, TRUEFRENCH, VFQ, VF, FRENCH)
         if (/\b(truefrench|vff|vfq|french|vf)\b|\bfrançais\b|\bfrancais\b/.test(lower)) {
-            return { code: 'lang-vf', label: '🇫🇷 VF', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.25)', border: '#3b82f6' };
+            return { code: 'lang-vf', label: '🇫🇷 VF', color: '#60a5fa', bg: 'rgba(15, 23, 42, 0.85)', border: 'rgba(96, 165, 250, 0.45)' };
         }
 
         // VOSTFR / French subtitles
         if (/\b(vostfr|subfrench)\b/.test(lower)) {
-            return { code: 'lang-vostfr', label: '💬 VOSTFR', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.25)', border: '#f59e0b' };
+            return { code: 'lang-vostfr', label: '💬 VOSTFR', color: '#fbbf24', bg: 'rgba(15, 23, 42, 0.85)', border: 'rgba(251, 191, 36, 0.45)' };
         }
 
         // Default: Original Version (mostly English)
-        return { code: 'lang-vo', label: '🇬🇧 VO', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.15)', border: '#64748b' };
+        return { code: 'lang-vo', label: '🇬🇧 VO', color: '#94a3b8', bg: 'rgba(15, 23, 42, 0.85)', border: 'rgba(148, 163, 184, 0.35)' };
     }
 
     function classifyStreamCompatibility(rawText, hasServer) {
@@ -59,10 +59,11 @@
         var isMp4 = S && S.isMp4 ? S.isMp4(lower) : /\.mp4\b|\bmp4\b/.test(lower);
         var isMkv = S && S.isMkv ? S.isMkv(lower) : /\.mkv\b|matroska/.test(lower);
         var hasDv = /\bdv\b|dolby\s*vision|dovi/.test(lower);
+        var hasDvP5 = /\b(dv\s*p5|p5\b|dovi\s*05|profile\s*5)\b/.test(lower);
         var hasHdr = /\bhdr10\+?\b|\bhdr\b/.test(lower);
 
-        if (isMp4 && hasDv) {
-            return { code: 'mp4-dv-warn', label: '\u26a0 MP4-DV (Prefer MKV)', color: '#fbbf24' };
+        if (hasDvP5 || (isMp4 && hasDv)) {
+            return { code: 'mp4-dv-warn', label: '\u26a0 DV P5 / MP4-DV (Écran vert TV)', color: '#fbbf24' };
         }
 
         var sizeGB = S && S.parseSizeGB ? S.parseSizeGB(lower) : null;
@@ -150,6 +151,24 @@
     RT.poll(function() {
         annotateStreamCards();
     }, 600, { route: 'nonplayer', quiet: true });
+
+    // Strict Player Route Purge: Ensure badges never bleed or stay visible in player
+    function purgeBadgesOnPlayer() {
+        if (RT.inPlayer()) {
+            var badges = document.querySelectorAll('.vidaa-lang-badge, .vidaa-compat-badge');
+            for (var i = 0; i < badges.length; i++) {
+                badges[i].style.display = 'none';
+            }
+        }
+    }
+    window.addEventListener('hashchange', purgeBadgesOnPlayer);
+    RT.poll(purgeBadgesOnPlayer, 1000, { route: 'player', quiet: true });
+
+    try {
+        var style = document.createElement('style');
+        style.textContent = '#player .vidaa-lang-badge, #player .vidaa-compat-badge, [class*="player-"] .vidaa-lang-badge, [class*="player-"] .vidaa-compat-badge { display: none !important; }';
+        document.head.appendChild(style);
+    } catch(e) {}
 
     if (window.__registerCommunityToggle) {
         window.__registerCommunityToggle({
