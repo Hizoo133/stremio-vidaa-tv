@@ -10,7 +10,7 @@
     {
       "note": "Expose player video controller on window.__STREMIO_PLAYER_CONTROLLER__ and player model on window.__STREMIO_PLAYER_MODEL__.",
       "find": ",C=v(),[P,I,E]=",
-      "replace": ",C=window.__STREMIO_PLAYER_CONTROLLER__=v(),window.__STREMIO_PLAYER_MODEL__=T,[P,I,E]="
+      "replace": ",C=(window.__STREMIO_PLAYER_MODEL__=T,window.__STREMIO_PLAYER_CONTROLLER__=v()),[P,I,E]="
     },
     {
       "note": "Cleanup player video controller and model on unmount.",
